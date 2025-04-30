@@ -49,3 +49,42 @@ Run sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debi
 EXPOSE 8501
 WORKDIR /root/dist/
 CMD ["/root/dist/rmmp.sh"]
+
+
+# Use official slim Python base image
+FROM python:3.12-slim
+
+# Set environment to non-interactive to avoid tzdata prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set maintainer info
+LABEL maintainer="AppleCakes14 lohvy-wm21@student.tarc.edu.my"
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    python3-dev \
+    python3-pip \
+    python3-yaml \
+    ffmpeg \
+    portaudio19-dev \
+    libgtk-3-dev \
+    git \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set work directory
+WORKDIR /app
+
+# Clone your MoneyPrinterPlus repo
+RUN git clone -b main https://github.com/AppleCakes14/MoneyPrinterPlus.git /app
+
+# Install Python dependencies
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Expose default port (Streamlit or similar)
+EXPOSE 8501
+
+# Entry point script — adjust if you have a different launch command
+CMD ["bash", "./rmmp.sh"]
