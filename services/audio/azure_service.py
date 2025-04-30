@@ -132,13 +132,15 @@ class AzureAudioService(AudioService):
                 print("Error details: {}".format(cancellation_details.error_details))
 
     # save to file
-    def save_with_ssml(self, text, file_name, voice, rate="0.00"):
+    def save_with_ssml(self, text, file_name, voice, rate="0.00", emotion="default"):
         ssml = f"""
         <speak xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="http://www.w3.org/2001/mstts" xmlns:emo="http://www.w3.org/2009/10/emotionml" version="1.0" xml:lang="en-US">
         <voice name="{voice}">
+            <mstts:express-as style="{emotion}">
             <prosody rate="{rate}%">
                 {text}
             </prosody>
+            </mstts:express-as>
         </voice>
         </speak>
         """
@@ -148,13 +150,15 @@ class AzureAudioService(AudioService):
             os.remove(file_name)
             self.my_speech_synthesis_to_wave_file_ssml(ssml, file_name)
 
-    def read_with_ssml(self, text, voice, rate="0.00"):
+    def read_with_ssml(self, text, voice, rate="0.00", emotion="default"):
         ssml = f"""
         <speak xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="http://www.w3.org/2001/mstts" xmlns:emo="http://www.w3.org/2009/10/emotionml" version="1.0" xml:lang="en-US">
         <voice name="{voice}">
+            <mstts:express-as style="{emotion}">
             <prosody rate="{rate}%">
                 {text}
             </prosody>
+            </mstts:express-as>
         </voice>
         </speak>
         """

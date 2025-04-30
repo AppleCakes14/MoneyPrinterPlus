@@ -27,7 +27,8 @@ import streamlit as st
 
 from config.config import transition_types, fade_list, audio_languages, audio_types, load_session_state_from_yaml, \
     save_session_state_to_yaml, app_title, GPT_soVITS_languages, CosyVoice_voice, my_config
-from main import main_generate_ai_video_for_mix, main_try_test_audio, get_audio_voices, main_try_test_local_audio
+from main import main_generate_ai_video_for_mix, main_try_test_audio, get_audio_voices, main_try_test_local_audio, \
+    get_audio_emotion
 from pages.common import common_ui
 from tools.tr_utils import tr
 from tools.utils import get_file_map_from_dir
@@ -48,10 +49,12 @@ load_session_state_from_yaml('02_first_visit')
 
 
 def try_test_audio():
+    print(f"try_test_audio = {st.session_state.get('audio_voice')}")
+    cleanup_previous_test_audio()
     main_try_test_audio()
 
-
 def try_test_local_audio():
+    cleanup_previous_test_audio()
     main_try_test_local_audio()
 
 
@@ -78,7 +81,7 @@ def more_scene_fragment(video_scene_container):
     with video_scene_container:
         if 'scene_number' in st.session_state:
             for k in range(st.session_state['scene_number']):
-                st.subheader(tr("Mix Video Scene") + str(k + 2))
+                st.subheader(tr("Mix Video Scene") + ' ' + str(k + 2))
                 st.text_input(label=tr("Video Scene Resource"),
                               placeholder=tr("Please input video scene resource folder path"),
                               key="video_scene_folder_" + str(k + 2))
@@ -94,12 +97,73 @@ def generate_video_for_mix(video_generator):
             print(i)
             main_generate_ai_video_for_mix(video_generator)
 
+def cleanup_previous_test_audio():
+    """Clean up previous test audio file if it exists"""
+    if "test_audio_file" in st.session_state and os.path.exists(st.session_state["test_audio_file"]):
+        try:
+            os.remove(st.session_state["test_audio_file"])
+            print(f"Removed previous test audio file: {st.session_state['test_audio_file']}")
+        except Exception as e:
+            print(f"Error removing previous test audio file: {e}")
 
+def voice_on_change(): 
+    print("=======================")
+    # print(audio_voice.get(st.session_state['audio_language']))
+    print(f"audio_language = {audio_languages}")
+    print(f"langauge = {st.session_state.get('audio_language')}")
+    print(voice_choice.index)
+    
+    print(f"value of session = {st.session_state.get('audio_voice')}")
+    print(f"selectbox value = {voice_choice}")
+    print(f"audio Speed = {st.session_state.get('audio_speed')}")
+    print(f"audio Emotion = {st.session_state.get('audio_emotion')}")
+    print("=======================")
+
+def refresh_emotion_list():
+    """Update the audio emotion options based on the selected voice"""
+    selected_language = st.session_state.get("audio_language")
+    selected_voice = st.session_state.get("audio_voice")
+    
+    print(f"Refreshing emotion list for voice: {selected_voice}")
+    
+    # Get the emotions for the selected voice
+    new_emotions = get_audio_emotion(selected_language, selected_voice)
+    
+    # Store the new emotions list in session state
+    if new_emotions:
+        st.session_state['available_emotions'] = new_emotions
+        print(f"Updated emotion list: {new_emotions}")
+    else:
+        # Add a default option if no emotions are available
+        st.session_state['available_emotions'] = ["default"]
+        print("No emotions found for this voice, using Default")
+    
+    # Reset the selected emotion to the first option
+    if st.session_state['available_emotions'] and len(st.session_state['available_emotions']) > 0:
+        st.session_state['audio_emotion'] = st.session_state['available_emotions'][0]
+        print(f"Setting selected emotion to: {st.session_state['audio_emotion']}")
+        
+    if len(new_emotions) == 1:
+        st.session_state["disabled"] = True
+    else:
+        st.session_state["disabled"] = False
+
+#====================================================================================
+if 'audio_emotion' not in st.session_state:
+    print('audio_emotion is None')
+    st.session_state['audio_emotion'] = []
+
+if 'available_emotions' not in st.session_state:
+    st.session_state['available_emotions'] = ["default"]
+
+if "disabled" not in st.session_state:
+    st.session_state["disabled"] = False
+print("language_code : ", st.session_state.ui_language_code)
 common_ui()
 
 st.markdown(f"<h1 style='text-align: center; font-weight:bold; font-family:comic sans ms; padding-top: 0rem;'> \
-            {app_title}</h1>", unsafe_allow_html=True)
-st.markdown("<h2 style='text-align: center;padding-top: 0rem;'>视频批量混剪工具</h2>", unsafe_allow_html=True)
+            {tr("App Title")}</h1>", unsafe_allow_html=True)
+st.markdown(f"<h2 style='text-align: center;padding-top: 0rem;'>{tr("02_Title")}</h2>", unsafe_allow_html=True)
 
 # 场景设置
 mix_video_container = st.container(border=True)
@@ -107,7 +171,7 @@ with mix_video_container:
     st.subheader(tr("Mix Video"))
     video_scene_container = st.container(border=True)
     with video_scene_container:
-        st.subheader(tr("Mix Video Scene") + str(1))
+        st.subheader(tr("Mix Video Scene") + ' ' + str(1))
         st.text_input(label=tr("Video Scene Resource"), placeholder=tr("Please input video scene resource folder path"),
                       key="video_scene_folder_" + str(1))
         st.text_input(label=tr("Video Scene Text"), placeholder=tr("Please input video scene text path"),
@@ -130,7 +194,7 @@ with captioning_container:
 
     llm_columns = st.columns(4)
     with llm_columns[0]:
-        st.selectbox(label=tr("Choose audio type"), options=audio_types, format_func=lambda x: audio_types.get(x),
+        st.selectbox(label=tr("Choose audio type"), options=audio_types.get(st.session_state.ui_language_code), format_func=lambda x: audio_types.get(st.session_state.ui_language_code).get(x),
                      key="audio_type")
 
     if st.session_state.get("audio_type") == "remote":
@@ -140,16 +204,33 @@ with captioning_container:
             st.selectbox(label=tr("Audio language"), options=audio_languages,
                          format_func=lambda x: audio_languages.get(x), key="audio_language")
         with llm_columns[1]:
-            st.selectbox(label=tr("Audio voice"),
-                         options=audio_voice.get(st.session_state.get("audio_language")),
-                         format_func=lambda x: audio_voice.get(st.session_state.get("audio_language")).get(x),
+            voice_choice = st.selectbox(label=tr("Audio voice"),
+                         options=audio_voice.get(st.session_state['audio_language']),
+                         format_func=lambda x: audio_voice.get(st.session_state['audio_language']).get(x),
                          key="audio_voice")
+            voice_on_change()
+            
         with llm_columns[2]:
             st.selectbox(label=tr("Audio speed"),
                          options=["normal", "fast", "faster", "fastest", "slow", "slower", "slowest"],
                          key="audio_speed")
         with llm_columns[3]:
+            st.selectbox(label=tr("Audio emotion"), 
+                         options=st.session_state['available_emotions'],
+                         index=st.session_state['available_emotions'].index(st.session_state.get('audio_emotion', st.session_state['available_emotions'][0])) if st.session_state.get('audio_emotion') in st.session_state['available_emotions'] else 0,
+                         key="audio_emotion",
+                         disabled=st.session_state["disabled"])
+            st.button(label=tr("Refresh"), on_click=refresh_emotion_list)
+            st.caption(tr("Click the refresh button everytime you change the voice"))
+
+        llm_columns = st.columns(4)
+        with llm_columns[0]:
             st.button(label=tr("Testing Audio"), type="primary", on_click=try_test_audio)
+        if "test_audio_file" in st.session_state and os.path.exists(st.session_state["test_audio_file"]):
+            with llm_columns[1]:
+                st.audio(st.session_state["test_audio_file"], format="audio/wav")
+                st.caption(tr("You can replay the audio by clicking the play button"))
+
     if st.session_state.get("audio_type") == "local":
         selected_local_audio_tts_provider = my_config['audio'].get('local_tts', {}).get('provider', '')
         if not selected_local_audio_tts_provider:
@@ -186,6 +267,10 @@ with captioning_container:
                                  key="audio_speed")
                 with llm_columns[2]:
                     st.button(label=tr("Testing Audio"), type="primary", on_click=try_test_local_audio)
+                if "test_audio_file" in st.session_state and os.path.exists(st.session_state["test_audio_file"]):
+                    with llm_columns[3]:
+                        st.audio(st.session_state["test_audio_file"], format="audio/wav")
+                        st.caption(tr("You can replay the audio by clicking the play button"))
             else:
                 llm_columns = st.columns(4)
                 with llm_columns[0]:
@@ -202,6 +287,10 @@ with captioning_container:
                                  key="audio_speed")
                 with llm_columns[3]:
                     st.button(label=tr("Testing Audio"), type="primary", on_click=try_test_local_audio)
+                if "test_audio_file" in st.session_state and os.path.exists(st.session_state["test_audio_file"]):
+                    with llm_columns[3]:
+                        st.audio(st.session_state["test_audio_file"], format="audio/wav")
+                        st.caption(tr("You can replay the audio by clicking the play button"))
         if selected_local_audio_tts_provider == 'GPTSoVITS':
             use_reference_audio = st.checkbox(label=tr("Use reference audio"), key="use_reference_audio")
             if use_reference_audio:
@@ -236,7 +325,9 @@ with captioning_container:
                              key="inference_audio_language")
             with llm_columns[5]:
                 st.button(label=tr("Testing Audio"), type="primary", on_click=try_test_local_audio)
-
+            if "test_audio_file" in st.session_state and os.path.exists(st.session_state["test_audio_file"]):
+                st.audio(st.session_state["test_audio_file"], format="audio/wav")
+                st.caption(tr("You can replay the audio by clicking the play button"))
         if selected_local_audio_tts_provider == 'CosyVoice':
             use_reference_audio = st.checkbox(label=tr("Use reference audio"), key="use_reference_audio")
             if use_reference_audio:
@@ -271,7 +362,7 @@ with recognition_container:
     st.subheader(tr("Audio recognition"))
     llm_columns = st.columns(4)
     with llm_columns[0]:
-        st.selectbox(label=tr("Choose recognition type"), options=audio_types, format_func=lambda x: audio_types.get(x),
+        st.selectbox(label=tr("Choose recognition type"), options=audio_types.get(st.session_state.ui_language_code), format_func=lambda x: audio_types.get(st.session_state.ui_language_code).get(x),
                      key="recognition_audio_type")
 
 # 背景音乐
@@ -303,7 +394,7 @@ with video_container:
     st.subheader(tr("Video Config"))
     llm_columns = st.columns(3)
     with llm_columns[0]:
-        layout_options = {"portrait": "竖屏", "landscape": "横屏", "square": "方形"}
+        layout_options = {"portrait": tr("Portrait"), "landscape": tr("Landscape"), "square": tr("Square")}
         st.selectbox(label=tr("video layout"), key="video_layout", options=layout_options,
                      format_func=lambda x: layout_options[x])
     with llm_columns[1]:
@@ -383,8 +474,12 @@ with subtitle_container:
     with llm_columns[2]:
         st.color_picker(label=tr("subtitle border color"), key="subtitle_border_color", value="#000000")
     with llm_columns[3]:
-        st.slider(label=tr("subtitle border width"), min_value=0, value=0, max_value=4, step=1,
-                  key="subtitle_border_width")
+        st.slider(label=tr("subtitle border width"), min_value=0.0, value=0.0, max_value=4.0, step=0.1,
+                  key="subtitle_border_width", format="%.1f")
+
+    llm_columns = st.columns(4)
+    with llm_columns[0]:
+        st.checkbox(label=tr("Enable punctuation"), key="enable_punctuation", value=False)
 
 # 生成视频
 video_generator = st.container(border=True)
@@ -394,5 +489,5 @@ with video_generator:
     st.button(label=tr("Generate Video Button"), type="primary", on_click=generate_video_for_mix,
               args=(video_generator,))
 result_video_file = st.session_state.get("result_video_file")
-if result_video_file:
+if result_video_file and os.path.exists(result_video_file):
     st.video(result_video_file)

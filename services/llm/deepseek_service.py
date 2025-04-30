@@ -40,13 +40,13 @@ class MyDeepSeekService(MyLLMService):
         must_have_value(self.DEEPSEEK_MODEL_NAME, "请设置DeepSeek model")
 
     def generate_content(self, topic: str, prompt_template: PromptTemplate, language: str = None, length: str = None):
-        # 创建 DeepSeek 的 LLM 实例
-        llm = OpenAI(
+    # Create DeepSeek LLM instance with proper configuration
+        client = OpenAI(
             api_key=self.DEEPSEEK_API_KEY,
             base_url=self.DEEPSEEK_API_URL
         )
 
-        response = llm.chat.completions.create(
+        response = client.chat.completions.create(
             model=self.DEEPSEEK_MODEL_NAME,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant"},

@@ -99,8 +99,8 @@ def generate_video(video_generator):
 
 
 st.markdown(f"<h1 style='text-align: center; font-weight:bold; font-family:comic sans ms; padding-top: 0rem;'> \
-            {app_title}</h1>", unsafe_allow_html=True)
-st.markdown("<h2 style='text-align: center;padding-top: 0rem;'>自动短视频生成器</h2>", unsafe_allow_html=True)
+            {tr("App Title")}</h1>", unsafe_allow_html=True)
+st.markdown(f"<h2 style='text-align: center;padding-top: 0rem;'>{tr("01_Title")}</h2>", unsafe_allow_html=True)
 
 # LLM区域
 llm_container = st.container(border=True)
@@ -163,7 +163,7 @@ with captioning_container:
 
     llm_columns = st.columns(4)
     with llm_columns[0]:
-        st.selectbox(label=tr("Choose TTS audio type"), options=audio_types, format_func=lambda x: audio_types.get(x),
+        st.selectbox(label=tr("Choose TTS audio type"), options=audio_types.get(st.session_state.ui_language_code), format_func=lambda x: audio_types.get(st.session_state.ui_language_code).get(x),
                      key="audio_type")
 
     if st.session_state.get("audio_type") == "remote":
@@ -305,7 +305,7 @@ with recognition_container:
 
     llm_columns = st.columns(4)
     with llm_columns[0]:
-        st.selectbox(label=tr("Choose recognition type"), options=audio_types, format_func=lambda x: audio_types.get(x),
+        st.selectbox(label=tr("Choose recognition type"), options=audio_types.get(st.session_state.ui_language_code), format_func=lambda x: audio_types.get(st.session_state.ui_language_code).get(x),
                      key="recognition_audio_type")
 
 # 背景音乐
@@ -337,8 +337,12 @@ video_container = st.container(border=True)
 with video_container:
     st.subheader(tr("Video Config"))
     llm_columns = st.columns(3)
-    with llm_columns[0]:
-        layout_options = {"portrait": "竖屏", "landscape": "横屏", "square": "方形"}
+    with llm_columns[0]: 
+        layout_options = {
+            "portrait": tr("Portrait"), 
+            "landscape": tr("Landscape"), 
+            "square": tr("Square")
+        }
         st.selectbox(label=tr("video layout"), key="video_layout", options=layout_options,
                      format_func=lambda x: layout_options[x])
     with llm_columns[1]:

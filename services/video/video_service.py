@@ -75,7 +75,7 @@ def get_audio_duration(audio_file):
         minutes = int(duration_search.group('minutes'))
         seconds = int(duration_search.group('seconds'))
         total_seconds = hours * 3600 + minutes * 60 + seconds
-        print("音频时长:", total_seconds)
+        print("音频时长:", total_seconds , " seconds")
         return total_seconds
     else:
         print(f"无法从输出中获取音频时长: {result.stderr.decode('utf-8')}")

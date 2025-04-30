@@ -26,10 +26,11 @@ import shutil
 import requests
 import streamlit as st
 import yaml
+from tools.tr_utils import tr
 
 from tools.file_utils import read_yaml, save_yaml
 
-app_title = "AI搞钱工具"
+app_title = "AI 视频工具"
 
 local_audio_tts_providers = ['chatTTS', 'GPTSoVITS', 'CosyVoice']
 local_audio_recognition_providers = ['fasterwhisper', 'sensevoice']
@@ -57,9 +58,18 @@ CosyVoice_voice = {
     "中文男":"中文男",
 }
 
-audio_types = {'remote': "云服务", 'local': "本地模型"}
-languages = {'zh-CN': "简体中文", 'en': "english", 'zh-TW': "繁體中文"}
-audio_languages = {'zh-CN': "中文", 'en-US': "english"}
+audio_types = {
+    'zh-CN': {
+        'remote': "云服务", 
+        'local': "本地模型"
+    }, 
+    'en-US': {
+        'remote': "Cloud Services", 
+        'local': "Local Model"
+    }
+}
+languages = {'zh-CN': "简体中文", 'en-US': "English", 'zh-TW': "繁體中文"}
+audio_languages = {'zh-CN': "中文", 'en-US': "English"}
 audio_voices_tencent = {
     "zh-CN": {
         "1001": "智瑜(女)",
@@ -129,7 +139,7 @@ audio_voices_azure = {
         "zh-CN-XiaoshuangNeural": "晓双(女,儿童)",
         "zh-CN-XiaoyanNeural": "晓颜(女)",
         "zh-CN-XiaoyouNeural": "晓悠(女,儿童)",
-        "zh-CN-XiaozhenNeura": "晓珍(女)",
+        "zh-CN-XiaozhenNeural": "晓珍(女)",
         "zh-CN-YunfengNeural": "云峰(男)",
         "zh-CN-YunhaoNeural": "云浩(男)",
         "zh-CN-YunxiaNeural": "云夏(男)",
@@ -172,7 +182,7 @@ audio_voices_azure = {
         "en-US-RogerNeural": "Roger(male)",
         "en-US-RyanMultilingualNeural": "Ryan(male),multilingual",
         "en-US-SteffanNeural": "Steffan(male)",
-        "en-US-AndrewMultilingualNeura": "Andrew(male),multilingual",
+        "en-US-AndrewMultilingualNeural": "Andrew(male),multilingual",
         "en-US-BlueNeural": "Blue(neural)",
         "en-US-BrianMultilingualNeural": "Brian(male),multilingual",
         "en-US-EmmaMultilingualNeural": "Emma(female),multilingual",
@@ -182,6 +192,78 @@ audio_voices_azure = {
         "en-US-OnyxMultilingualNeural": "Onyx(male),multilingual",
         "en-US-NovaMultilingualNeural": "Nova(female),multilingual",
         "en-US-ShimmerMultilingualNeural": "Shimmer(female),multilingual",
+    }
+}
+
+audio_voices_emotion_azure = {
+    "zh-CN": {
+        "zh-CN-XiaoxiaoNeural": ["default", "affectionate", "angry", "assistant", "calm", "chat", "chat-casual", "cheerful", "customerservice", "disgruntled", "excited", "fearful", "friendly", "gentle", "lyrical", "newscast", "poetry-reading", "sad", "serious", "sorry", "whispering"],
+        "zh-CN-YunxiNeural": ["default", "angry", "assistant", "chat", "cheerful", "depressed", "disgruntled", "embarrassed", "fearful", "narration-relaxed", "newscast", "sad", "serious"],
+        "zh-CN-YunjianNeural": ["default", "angry", "cheerful", "depressed", "disgruntled", "documentary-narration", "narration-relaxed", "sad", "serious", "sports-commentary", "sports-commentary-excited"],
+        "zh-CN-XiaoyiNeural": ["default", "affectionate", "angry", "cheerful", "disgruntled", "embarrassed", "fearful", "gentle", "sad", "serious"],
+        "zh-CN-YunyangNeural": ["default", "customerservice", "narration-professional", "newscast-casual"],
+        "zh-CN-XiaochenNeural": ["default", "livecommercial"],
+        "zh-CN-XiaohanNeural": ["default", "affectionate", "angry", "calm", "cheerful", "disgruntled", "embarrassed", "fearful", "gentle", "sad", "serious"],
+        "zh-CN-XiaomengNeural": ["default", "chat"],
+        "zh-CN-XiaomoNeural": ["default", "affectionate", "angry", "calm", "cheerful", "depressed", "disgruntled", "embarrassed", "envious", "fearful", "gentle", "sad", "serious"],
+        "zh-CN-XiaoruiNeural": ["default", "angry", "calm", "fearful", "sad"],
+        "zh-CN-XiaoshuangNeural": ["default", "chat"],
+        "zh-CN-XiaozhenNeural": ["default", "angry", "cheerful", "disgruntled", "fearful", "sad", "serious"],
+        "zh-CN-YunfengNeural": ["default", "angry", "cheerful", "depressed", "disgruntled", "fearful", "sad", "serious"],
+        "zh-CN-YunhaoNeural": ["default", "advertisement-upbeat"],
+        "zh-CN-YunxiaNeural": ["default", "angry", "calm", "cheerful", "fearful", "sad"],
+        "zh-CN-YunyeNeural": ["default", "angry", "calm", "cheerful", "disgruntled", "embarrassed", "fearful", "sad", "serious"],
+        "zh-CN-YunzeNeural": ["default", "angry", "calm", "cheerful", "depressed", "disgruntled", "documentary-narration", "fearful", "sad", "serious"],
+        "zh-CN-XiaoxiaoMultilingualNeural": ["default", "affectionate", "cheerful", "empathetic", "excited", "poetry-reading", "sorry", "story"],
+        "zh-CN-XiaoqiuNeural": ["default"],
+        "zh-CN-XiaoyanNeural": ["default"],
+        "zh-CN-XiaoyouNeural": ["default"],
+        "zh-CN-XiaochenMultilingualNeural": ["default"],
+        "zh-CN-XiaorouNeural": ["default"],
+        "zh-CN-XiaoxiaoDialectsNeural": ["default"],
+        "zh-CN-XiaoyuMultilingualNeural": ["default"],
+        "zh-CN-YunjieNeural": ["default"],
+        "zh-CN-YunyiMultilingualNeural": ["default"],
+    },
+    "en-US": {
+        "en-US-AlloyMultilingualNeural": ["default"],
+        "en-US-AmberNeural": ["default"],
+        "en-US-AnaNeural": ["default"],
+        "en-US-AndrewMultilingualNeural": ["default", "empathetic", "relieved"],
+        "en-US-AndrewNeural": ["default"],
+        "en-US-AriaNeural": ["default", "angry", "chat", "cheerful", "customerservice", "empathetic", "excited", "friendly", "hopeful", "narration-professional", "newscast-casual", "newscast-formal", "sad", "shouting", "terrified", "unfriendly", "whispering"],
+        "en-US-AshleyNeural": ["default"],
+        "en-US-AvaMultilingualNeural": ["default"],
+        "en-US-BrianMultilingualNeural": ["default"],
+        "en-US-BrianNeural": ["default"],
+        "en-US-BlueNeural": ["default"],
+        "en-US-BrandonNeural": ["default"],
+        "en-US-ChristopherNeural": ["default"],
+        "en-US-CoraNeural": ["default"],
+        "en-US-DavisNeural": ["default", "angry", "chat", "cheerful", "excited", "friendly", "hopeful", "sad", "shouting", "terrified", "unfriendly", "whispering"],
+        "en-US-ElizabethNeural": ["default"],
+        "en-US-EchoMultilingualNeural": ["default"],
+        "en-US-EricNeural": ["default"],
+        "en-US-EmmaMultilingualNeural": ["default"],
+        "en-US-EmmaNeural": ["default"],
+        "en-US-FableMultilingualNeural": ["default"],
+        "en-US-GuyNeural": ["default", "angry", "cheerful", "excited", "friendly", "hopeful", "newscast", "sad", "shouting", "terrified", "unfriendly", "whispering"],
+        "en-US-JacobNeural": ["default"],
+        "en-US-JennyMultilingualNeural": ["default"],
+        "en-US-JennyNeural": ["default", "angry", "assistant", "chat", "cheerful", "customerservice", "excited", "friendly", "hopeful", "newscast", "sad", "shouting", "terrified", "unfriendly", "whispering"],
+        "en-US-JasonNeural": ["default", "angry", "cheerful", "excited", "friendly", "hopeful", "sad", "shouting", "terrified", "unfriendly", "whispering"],
+        "en-US-JaneNeural": ["default", "angry", "cheerful", "excited", "friendly", "hopeful", "sad", "shouting", "terrified", "unfriendly", "whispering"],
+        "en-US-MichelleNeural": ["default"],
+        "en-US-MonicaNeural": ["default"],
+        "en-US-NancyNeural": ["default", "angry", "cheerful", "excited", "friendly", "hopeful", "sad", "shouting", "terrified", "unfriendly", "whispering"],
+        "en-US-NovaMultilingualNeural": ["default"],
+        "en-US-OnyxMultilingualNeural": ["default"],
+        "en-US-RogerNeural": ["default"],
+        "en-US-RyanMultilingualNeural": ["default"],
+        "en-US-SaraNeural": ["default", "angry", "cheerful", "excited", "friendly", "hopeful", "sad", "shouting", "terrified", "unfriendly", "whispering"],
+        "en-US-SteffanNeural": ["default"],
+        "en-US-TonyNeural": ["default", "angry", "cheerful", "excited", "friendly", "hopeful", "sad", "shouting", "terrified", "unfriendly", "whispering"],
+        "en-US-ShimmerMultilingualNeural": ["default"],
     }
 }
 
@@ -304,6 +386,32 @@ def save_session_state_to_yaml():
     with open(session_file, 'w') as file:
         yaml.dump(dict(state_to_save), file)
 
+def save_specific_state_to_yaml(key):
+    """将 Streamlit session_state 中的特定键值保存到 YAML 文件"""
+    # 检查键是否在session_state中
+    if key not in st.session_state:
+        return
+    
+    # 读取现有的YAML文件内容
+    existing_data = {}
+    if os.path.exists(session_file):
+        try:
+            with open(session_file, 'r') as file:
+                existing_data = yaml.safe_load(file) or {}
+        except Exception:
+            existing_data = {}
+    
+    # 更新特定键的值
+    existing_data[key] = st.session_state[key]
+    
+    # 排除指定的键
+    existing_data = {k: v for k, v in existing_data.items() if k not in exclude_keys}
+    
+    # 将更新后的数据写回文件
+    with open(session_file, 'w') as file:
+        yaml.dump(dict(existing_data), file)
+    
+
 
 def delete_first_visit_session_state(first_visit):
     # 从session_state中删除其他first_vist标记
@@ -352,6 +460,7 @@ def test_config(todo_config, *args):
 def save_config():
     # 保存配置文件
     if os.path.exists(config_file):
+        print("saviconfig...")
         save_yaml(config_file, my_config)
 
 def fetch_CosyVoice_voice():

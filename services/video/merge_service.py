@@ -98,6 +98,14 @@ def format_time(seconds):
         milliseconds = 0
     return f"{time},000" if milliseconds == 0 else f"{time},{milliseconds:03d}"
 
+# def format_time(seconds):
+#     """Format time in seconds to SRT format (HH:MM:SS,mmm)"""
+#     hours = int(seconds // 3600)
+#     minutes = int((seconds % 3600) // 60)
+#     seconds = seconds % 60
+#     milliseconds = int((seconds - int(seconds)) * 1000)
+#     return f"{hours:02d}:{minutes:02d}:{int(seconds):02d},{milliseconds:03d}"
+
 
 def gen_subtitle_file(subtitle_file, scene_text, video_duration):
     """生成 SRT 字幕文件"""

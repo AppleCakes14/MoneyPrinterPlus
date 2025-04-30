@@ -21,6 +21,8 @@ import wave
 import azure.cognitiveservices.speech as speechsdk  # type: ignore
 from services.captioning import user_config_helper, caption_helper, helper
 
+import streamlit as st
+
 USAGE = """Usage: python captioning.py [...]
 
   HELP
@@ -252,7 +254,7 @@ class Captioning(object):
     def speech_config_from_user_config(self) -> speechsdk.SpeechConfig:
         speech_config = None
         speech_config = speechsdk.SpeechConfig(subscription=self._user_config["subscription_key"],
-                                               region=self._user_config["region"])
+                                            region=self._user_config["region"])
 
         speech_config.set_profanity(self._user_config["profanity_option"])
 
@@ -261,10 +263,20 @@ class Captioning(object):
                 property_id=speechsdk.PropertyId.SpeechServiceResponse_StablePartialResultThreshold,
                 value=self._user_config["stable_partial_result_threshold"])
 
-        speech_config.set_property(property_id=speechsdk.PropertyId.SpeechServiceResponse_PostProcessingOption,
-                                   value="TrueText")
+        # Set language first
         speech_config.speech_recognition_language = self._user_config["language"]
-
+        
+        
+        # Control punctuation LAST - after all other settings
+        print("Enabled Punctuation: ", st.session_state.get("enable_punctuation"))
+        if not st.session_state.get("enable_punctuation"):
+            # Enable dictation mode to disable automatic punctuation
+            print("disabling punctuation...")
+            speech_config.enable_dictation()
+        else:
+            speech_config.set_property(property_id=speechsdk.PropertyId.SpeechServiceResponse_PostProcessingOption,
+                                value="TrueText")
+            
         return speech_config
 
     def speech_recognizer_from_user_config(self) -> helper.Read_Only_Dict:

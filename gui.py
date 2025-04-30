@@ -22,7 +22,7 @@
 #
 
 import streamlit as st
-from config.config import my_config, save_config, languages, test_config, local_audio_tts_providers, \
+from config.config import my_config, save_config, languages, test_config, local_audio_tts_providers, save_specific_state_to_yaml, \
     local_audio_recognition_providers, local_audio_recognition_fasterwhisper_module_names, \
     local_audio_recognition_fasterwhisper_device_types, local_audio_recognition_fasterwhisper_compute_types, \
     delete_first_visit_session_state, app_title
@@ -31,21 +31,24 @@ from tools.tr_utils import tr
 
 delete_first_visit_session_state("all_first_visit")
 
+if 'ui_language_code' not in st.session_state:
+    st.session_state['ui_language_code'] = my_config['ui']['language']
+print(st.session_state.ui_language_code)
 common_ui()
 
 st.markdown(f"<h1 style='text-align: center; font-weight:bold; font-family:comic sans ms; padding-top: 0rem;'> \
-            {app_title}</h1>", unsafe_allow_html=True)
-st.markdown("<h2 style='text-align: center;padding-top: 0rem;'>基本配置信息</h2>", unsafe_allow_html=True)
+            {tr("App Title")}</h1>", unsafe_allow_html=True)
+st.markdown(f"<h2 style='text-align: center;padding-top: 0rem;'>{tr("Base Config")}</h2>", unsafe_allow_html=True)
 
-if 'ui_language' not in st.session_state:
-    st.session_state['ui_language'] = 'zh-CN - 简体中文'
 
 
 def set_ui_language():
     print('set_ui_language:', st.session_state['ui_language'])
-    my_config['ui']['language'] = st.session_state['ui_language'].split(" - ")[0].strip()
+    st.session_state['ui_language_code'] = st.session_state['ui_language'].split(" - ")[0].strip()
+    my_config['ui']['language'] = st.session_state['ui_language_code']
     print('set ui language:', my_config['ui']['language'])
     save_config()
+    save_specific_state_to_yaml("ui_language_code")
 
 
 def save_pexels_api_key():
@@ -207,8 +210,9 @@ display_languages = []
 selected_index = 0
 for i, code in enumerate(languages.keys()):
     display_languages.append(f"{code} - {languages[code]}")
-    if f"{code} - {languages[code]}" == st.session_state['ui_language']:
+    if code == st.session_state['ui_language_code']:
         selected_index = i
+        st.session_state["ui_language"] = f"{code} - {languages[code]}"
 # print("selected_index:", selected_index)
 selected_language = st.selectbox(tr("Language"), options=display_languages,
                                  index=selected_index, key='ui_language', on_change=set_ui_language)
@@ -453,7 +457,7 @@ with (llm_container):
     # 设置llm的值：
     with st.expander(llm_provider, expanded=True):
         tips = f"""
-               ##### {llm_provider} 配置信息
+               ##### {llm_provider} {tr("Config Details")}
                """
         st.info(tips)
         if llm_provider != 'Ollama':
@@ -471,7 +475,7 @@ with (llm_container):
             if llm_provider == 'Azure' or llm_provider == 'DeepSeek' or llm_provider == 'Ollama':
                 st_llm_base_url = st.text_input(tr("Base Url"),
                                                 value=my_config['llm'].get(llm_provider, {}).get('base_url', ''),
-                                                type="password", key=llm_provider + '_base_url',
+                                                type="default", key=llm_provider + '_base_url',
                                                 on_change=set_llm_base_url,
                                                 args=(llm_provider, llm_provider + '_base_url'))
 

@@ -1,4 +1,11 @@
 {
+  "Title": "视频生成工具",
+  "App Title": "AI视频生成器",
+  "Page Title": "AI视频生成工具",
+  "01_Title": "AI视频生成工具",
+  "02_Title": "自动短视频生成器",
+  "03_Title": "视频批量合并工具",
+  "04_Title": "视频批量自动发布工具",
   "Base Config": "基本配置",
   "Generate Video" : "AI视频",
   "Mix Video": "混剪视频",
@@ -14,6 +21,7 @@
   "API Key": "API Key",
   "Base Url": "Base Url",
   "Model Name": "Model Name",
+  "Config Details": "配置信息",
 
   "Audio Provider Info": "配置音频库信息",
   "Remote Audio Provider": "云服务音频库",
@@ -102,8 +110,7 @@
   "Add Subtitles...": "添加字幕...",
   "Generate Video completed!": "生成视频完成!",
 
-
-  "Mix Video": "视频混剪区",
+  "AI Video": "自动短视频生成器",
   "Mix Video Scene": "视频片段",
   "Video Scene Resource": "视频片段资源目录",
   "Please input video scene resource folder path": "请输入视频片段资源目录路径如:D:\\downloads\\work\\scen1",
@@ -154,5 +161,8 @@
   "Auto Publish": "是否自动发布",
   "Tags": "视频标签",
   "Video File": "视频文件",
-  "Text File": "文本文件"
+  "Text File": "文本文件",
+  "Portrait": "竖屏",
+  "Landscape": "横屏",
+  "Square": "方形"
 }

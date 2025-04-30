@@ -108,6 +108,120 @@ def generate_caption():
 
     captioning.finish()
 
+# def generate_caption():
+#     captioning = Captioning()
+#     captioning.initialize()
+    
+#     # Get the script text that was used to generate the audio
+#     # Get video content from multiple scene texts
+#     video_content = ""
+#     for i in range(1, 6):  # 1 through 5
+#         scene_text_path = st.session_state.get(f"video_scene_text_{i}", "")
+#         if scene_text_path and os.path.exists(scene_text_path):  # Check if path exists
+#             try:
+#                 with open(scene_text_path, 'r', encoding='utf-8') as file:
+#                     scene_text = file.read()
+#                     if scene_text:  # Skip empty files
+#                       video_content += scene_text + " "
+#             except Exception as e:
+#                 print(f"Error reading file {scene_text_path}: {e}")
+#     video_content = video_content.strip()  # Remove trailing space
+#     if not video_content:
+#         print("No video content found in session state")
+#         return
+    
+#     # Get the audio file path and determine its duration
+#     audio_file = st.session_state.get("audio_output_file")
+#     if not audio_file or not os.path.exists(audio_file):
+#         print(f"Audio file not found: {audio_file}")
+#         return
+    
+#     # Get audio duration using ffprobe
+#     import subprocess
+#     import json
+    
+#     cmd = [
+#         'ffprobe', 
+#         '-v', 'error', 
+#         '-show_entries', 'format=duration', 
+#         '-of', 'json', 
+#         audio_file
+#     ]
+    
+#     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#     duration = float(json.loads(result.stdout)['format']['duration'])
+    
+#     # Generate subtitles from the script text
+#     output_file = st.session_state.get("captioning_output")
+#     if not output_file:
+#         random_name = str(int(time.time()))
+#         output_file = os.path.join(os.path.dirname(audio_file), f"{random_name}.srt")
+#         st.session_state["captioning_output"] = output_file
+    
+#     # Generate subtitles based on the script text
+#     generate_script_based_subtitles(video_content, output_file, duration)
+
+# # Generate caption with script selected
+# def generate_script_based_subtitles(script_text, output_file, audio_duration):
+#     """Generate subtitles based on script text by splitting at punctuation marks
+    
+#     Args:
+#         script_text: The text script used for voice generation
+#         output_file: Path to output SRT file
+#         audio_duration: Duration of the audio in seconds
+#     """
+#     def format_time(seconds):
+#         """Format time in seconds to SRT format (HH:MM:SS,mmm)"""
+#         hours = int(seconds // 3600)
+#         minutes = int((seconds % 3600) // 60)
+#         seconds = seconds % 60
+#         milliseconds = int((seconds - int(seconds)) * 1000)
+#         return f"{hours:02d}:{minutes:02d}:{int(seconds):02d},{milliseconds:03d}"
+
+#     # Split text by punctuation marks (for both English and Chinese)
+#     import re
+    
+#     # Split by common punctuation (., !, ?, 。, ！, ？, etc.)
+#     sentences = re.split(r'([.!?。！？;；])', script_text)
+    
+#     # Combine each sentence with its punctuation
+#     real_sentences = []
+#     i = 0
+#     while i < len(sentences) - 1:
+#         if i + 1 < len(sentences) and len(sentences[i+1]) == 1:  # If next item is punctuation
+#             real_sentences.append(sentences[i] + sentences[i+1])
+#             i += 2
+#         else:
+#             if sentences[i].strip():  # Only add non-empty strings
+#                 real_sentences.append(sentences[i])
+#             i += 1
+    
+#     # Filter out empty sentences
+#     real_sentences = [s.strip() for s in real_sentences if s.strip()]
+    
+#     # Calculate time per sentence (distribute evenly across audio duration)
+#     if not real_sentences:
+#         return
+    
+#     time_per_sentence = audio_duration / len(real_sentences)
+    
+#     # Write SRT file
+#     with open(output_file, 'w', encoding='utf-8') as f:
+#         for i, sentence in enumerate(real_sentences):
+#             start_time = i * time_per_sentence
+#             end_time = (i + 1) * time_per_sentence
+            
+#             # Format timestamps as SRT requires (HH:MM:SS,mmm)
+#             start_str = format_time(start_time)
+#             end_str = format_time(end_time)
+            
+#             # Write SRT entry
+#             f.write(f"{i+1}\n")
+#             f.write(f"{start_str} --> {end_str}\n")
+#             f.write(f"{sentence}\n\n")
+    
+#     return output_file
+
 
 # 添加字幕
 def add_subtitles(video_file, subtitle_file, font_name='Songti TC Bold', font_size=12, primary_colour='#FFFFFF',

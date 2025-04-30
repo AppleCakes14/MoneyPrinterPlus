@@ -22,10 +22,11 @@
 #
 
 import os
+import torch
 
 import streamlit as st
 
-from config.config import my_config, audio_voices_azure, audio_voices_ali, audio_voices_tencent
+from config.config import my_config, audio_voices_azure, audio_voices_ali, audio_voices_tencent, audio_voices_emotion_azure
 from services.audio.alitts_service import AliAudioService
 from services.audio.azure_service import AzureAudioService
 from services.audio.chattts_service import ChatTTSAudioService
@@ -62,6 +63,7 @@ script_dir = os.path.dirname(script_path)
 audio_output_dir = os.path.join(script_dir, "./work")
 audio_output_dir = os.path.abspath(audio_output_dir)
 
+torch.classes.__path__ = [os.path.join(torch.__path__[0], torch.classes.__file__)] 
 
 def get_audio_voices():
     selected_audio_provider = my_config['audio']['provider']
@@ -72,6 +74,14 @@ def get_audio_voices():
     if selected_audio_provider == 'Tencent':
         return audio_voices_tencent
 
+def get_audio_emotion(language, speaker):
+    # selected_audio_provider = my_config['audio']['provider']
+    # if language == 'zh-CN':
+        return audio_voices_emotion_azure.get(language, {}).get(speaker, {})
+    # if language == 'en-US':
+    #     return audio_voices_ali
+    # if selected_audio_provider == 'Tencent':
+    #     return audio_voices_tencent
 
 def get_resource_provider():
     resource_provider = my_config['resource']['provider']
@@ -82,8 +92,6 @@ def get_resource_provider():
         return PixabayService()
     if resource_provider == "stableDiffusion":
         return SDService()
-
-
 
 def get_audio_service():
     selected_audio_provider = my_config['audio']['provider']
@@ -120,30 +128,50 @@ def main_try_test_local_audio():
     print("main_try_test_local_audio begin")
     selected_local_audio_tts_provider = my_config['audio'].get('local_tts', {}).get('provider', '')
     video_content = "你好，今天你吃饭了没有？你心情如何？"
+
+    temp_file_name = random_with_system_time()
+    test_audio_file = os.path.join(audio_output_dir, f"test_local_{temp_file_name}.wav")
+
     if selected_local_audio_tts_provider == "chatTTS":
         audio_service = ChatTTSAudioService()
     if selected_local_audio_tts_provider == "GPTSoVITS":
         audio_service = GPTSoVITSAudioService()
     if selected_local_audio_tts_provider == "CosyVoice":
         audio_service = CosyVoiceAudioService()
-    audio_service.read_with_content(video_content)
 
+    audio_service.chat_with_content(video_content, test_audio_file)
 
+    st.session_state["test_audio_file"] = test_audio_file
+    return test_audio_file
+    
 def main_try_test_audio():
+    print(f"main_try_test_audio = {st.session_state.get('audio_voice')}")
     print("main_try_test_audio begin")
     audio_service = get_audio_service()
     audio_rate = get_audio_rate()
     audio_language = st.session_state.get("audio_language")
+    audio_emotion = get_emotion()
     if audio_language == "en-US":
         video_content = "hello,this is flydean"
     else:
         video_content = "你好，我是程序那些事"
     audio_voice = get_must_session_option("audio_voice", "请先设置配音语音")
+    print("audio_voice:", audio_voice)
     if audio_voice is None:
         return
-    audio_service.read_with_ssml(video_content,
-                                 audio_voice,
-                                 audio_rate)
+    temp_file_name = random_with_system_time()
+    test_audio_file = os.path.join(audio_output_dir, f"test_{temp_file_name}.wav")
+    
+    # Save the audio file instead of just playing it
+    audio_service.save_with_ssml(video_content,
+                               test_audio_file,
+                               audio_voice,
+                               audio_rate,
+                               audio_emotion)
+    
+    # Store the path in session state for the UI to access
+    st.session_state["test_audio_file"] = test_audio_file
+    return test_audio_file
 
 
 def main_generate_video_dubbing():
@@ -161,12 +189,14 @@ def main_generate_video_dubbing():
         audio_service = get_audio_service()
         audio_rate = get_audio_rate()
         audio_voice = get_must_session_option("audio_voice", "请先设置配音语音")
+        audio_emotion = get_emotion()
         if audio_voice is None:
             return
         audio_service.save_with_ssml(video_content,
                                      audio_output_file,
                                      audio_voice,
-                                     audio_rate)
+                                     audio_rate,
+                                     audio_emotion)
     else:
         print("use local audio")
         selected_local_audio_tts_provider = my_config['audio'].get('local_tts', {}).get('provider', '')
@@ -181,7 +211,6 @@ def main_generate_video_dubbing():
     # 语音扩展2秒钟,防止突然结束很突兀
     extent_audio(audio_output_file, 2)
     print("main_generate_video_dubbing end")
-
 
 def main_generate_video_dubbing_for_mix():
     print("main_generate_video_dubbing_for_mix begin")
@@ -260,6 +289,11 @@ def get_audio_rate():
             audio_rate = "-2"
         return audio_rate
 
+def get_emotion():
+    audio_provider = my_config['audio']['provider']
+    if audio_provider == "Azure":
+        audio_emotion = st.session_state.get("audio_emotion")
+        return audio_emotion
 
 def main_get_video_resource():
     print("main_get_video_resource begin")

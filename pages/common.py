@@ -32,10 +32,11 @@ Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查�
 import streamlit as st
 
 from tools.tr_utils import tr
-
+from config.config import my_config
 
 def common_ui():
-    st.set_page_config(page_title="MoneyPrinterPlus",
+    initialize_language()
+    st.set_page_config(page_title="Video Generator Tools",
                        page_icon=":pretzel:",
                        layout="wide",
                        initial_sidebar_state="auto",
@@ -50,9 +51,17 @@ def common_ui():
     st.sidebar.page_link("pages/02_mix_video.py", label=tr("Mix Video"))
     st.sidebar.page_link("pages/02_merge_video.py", label=tr("Merge Video"))
     st.sidebar.page_link("pages/03_auto_publish.py", label=tr("Video Auto Publish"))
+    # st.sidebar.markdown("---")
     # st.sidebar.markdown(
     #     '<a style="text-align: center;padding-top: 0rem;" href="http://www.flydean.com">Developed by 程序那些事</a>',
     #     unsafe_allow_html=True)
 
     with st.sidebar:
         st.markdown('---')
+
+def initialize_language():
+    if 'ui_language_code' not in st.session_state:
+        st.session_state['ui_language_code'] = my_config['ui']['language']
+    else:
+        # Make sure config always reflects session state
+        my_config['ui']['language'] = st.session_state['ui_language_code']
