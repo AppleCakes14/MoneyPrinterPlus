@@ -522,20 +522,24 @@ class VideoService:
                     
                     # Ensure exact target dimensions for all outputs to avoid transition errors
                     if img_height >= img_width:
-                        # Portrait image
+                        # Portrait image with background
                         ffmpeg_cmd = [
                             'ffmpeg',
                             *hw_accel,
-                            '-loop', '1',
-                            '-i', media_file,
-                            '-c:v', vcodec,
-                            '-pix_fmt', 'yuv420p',
-                            '-preset', 'fast' if use_gpu else 'medium',
-                            '-t', str(self.default_duration),
-                            '-r', str(self.fps),
+                            '-loop', '1',  # Loop the image (create a video from an image)
+                            '-i', media_file,  # Input image file
+                            '-c:v', vcodec,  # Video codec
+                            '-pix_fmt', 'yuv420p',  # Pixel format (to ensure compatibility)
+                            '-preset', 'fast' if use_gpu else 'medium',  # Encoder preset
+                            '-t', str(self.default_duration),  # Video duration
+                            '-r', str(self.fps),  # Frame rate
                             '-vf',
-                            f'scale=-1:{self.target_height}:force_original_aspect_ratio=1,pad={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2:black',
-                            '-y', output_name
+                            f"split[original][blur];"
+                            f"[blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred];"  # Create a blurred background
+                            f"[original]scale=-1:{self.target_height}:force_original_aspect_ratio=1[scaled];"  # Resize the portrait to fit the target height
+                            f"[blurred][scaled]overlay=(W-w)/2:(H-h)/2,format=yuv420p",  # Center the portrait on the blurred background
+                            '-y',  # Overwrite output file if it exists
+                            output_name  # Output file name
                         ]
                     else:
                         # Landscape image - blurred background
@@ -572,61 +576,123 @@ class VideoService:
                     subprocess.run(fallback_cmd, check=True)
                     
             else:
-                # Video files - ensure they all have exact same dimensions
-                try:
-                    video_width, video_height = get_video_info(media_file)
-                    
-                    # Set encoder based on GPU availability
-                    vcodec = 'h264_nvenc' if use_gpu else 'libx264'
-                    hw_accel = ['-hwaccel', 'cuda'] if use_gpu else []
-                    
-                    if video_height >= video_width:
-                        # Portrait video
+                # Get video properties
+                video_duration = get_video_duration(media_file)
+                video_width, video_height = get_video_info(media_file)
+                output_name = generate_temp_filename(media_file, new_directory=work_output_dir)
+                
+                if self.seg_min_duration > video_duration:
+                    print("需要扩展视频...")
+                    # 需要扩展视频
+                    stretch_factor = float(self.seg_min_duration) / float(video_duration)  # 拉长比例
+                    if video_width / video_height > self.target_width / self.target_height:
                         command = [
                             'ffmpeg',
-                            *hw_accel,
-                            '-i', media_file,
-                            '-c:v', vcodec,
-                            '-pix_fmt', 'yuv420p',
-                            '-preset', 'fast' if use_gpu else 'medium',
-                            '-r', str(self.fps),
-                            '-an',
+                            '-i', media_file,  # 输入文件
+                            '-r', str(self.fps),  # 设置帧率
+                            '-an',  # 去除音频
                             '-vf',
-                            f'scale=-1:{self.target_height}:force_original_aspect_ratio=1,pad={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2:black',
-                            '-y', output_name
+                            f"setpts={stretch_factor}*PTS,split[original][blur];[blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
+                            f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
+                            f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
+                            f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
+                            f"[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
+                            '-y',
+                            output_name  # 输出文件
                         ]
                     else:
-                        # Landscape video - blurred background with simpler filter
                         command = [
                             'ffmpeg',
-                            *hw_accel,
-                            '-i', media_file,
-                            '-c:v', vcodec,
-                            '-pix_fmt', 'yuv420p',
-                            '-preset', 'fast' if use_gpu else 'medium',
-                            '-r', str(self.fps),
-                            '-an',
+                            '-i', media_file,  # 输入文件
+                            '-r', str(self.fps),  # 设置帧率
+                            '-an',  # 去除音频
                             '-vf',
-                            f'[in]split[original][blur]; [blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred]; [original]scale=-1:{int(self.target_height*0.7)}:force_original_aspect_ratio=1[scaled]; [blurred][scaled]overlay=(W-w)/2:(H-h)/2,format=yuv420p[out]',
-                            '-y', output_name
+                            f"setpts={stretch_factor}*PTS,split[original][blur];[blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
+                            f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
+                            f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
+                            f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
+                            f"[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
+                            '-y',
+                            output_name  # 输出文件
                         ]
-                    
+                    # 执行FFmpeg命令
                     print(" ".join(command))
                     run_ffmpeg_command(command)
-                except Exception as e:
-                    print(f"Error processing video: {e}")
-                    # Simplest fallback - without GPU
-                    fallback_cmd = [
-                        'ffmpeg',
-                        '-i', media_file,
-                        '-pix_fmt', 'yuv420p',
-                        '-c:v', 'libx264',
-                        '-r', str(self.fps),
-                        '-an',
-                        '-vf', f'scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=decrease,pad={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2:black',
-                        '-y', output_name
-                    ]
-                    run_ffmpeg_command(fallback_cmd)
+                
+                elif self.seg_max_duration < video_duration:
+                    print("需要裁减视频...")
+                    # 需要裁减视频
+                    if video_width / video_height > self.target_width / self.target_height:
+                        cmd = [
+                            'ffmpeg',
+                            '-i', media_file,
+                            '-r', str(self.fps),  # 设置帧率
+                            '-an',  # 去除音频
+                            '-t', str(self.seg_max_duration),
+                            '-vf',
+                            f"split[original][blur];[blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
+                            f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
+                            f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
+                            f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
+                            f"[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
+                            '-y',
+                            output_name
+                        ]
+                    else:
+                        cmd = [
+                            'ffmpeg',
+                            '-i', media_file,
+                            '-r', str(self.fps),  # 设置帧率
+                            '-an',  # 去除音频
+                            '-t', str(self.seg_max_duration),
+                            '-vf',
+                            f"split[original][blur];[blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
+                            f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
+                            f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
+                            f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
+                            f"[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
+                            '-y',
+                            output_name
+                        ]
+                    # 执行FFmpeg命令
+                    print(" ".join(cmd))
+                    run_ffmpeg_command(cmd)
+                
+                else:
+                    # 不需要拉伸也不需要裁剪，只需要调整分辨率和fps
+                    if video_width / video_height > self.target_width / self.target_height:
+                        command = [
+                            'ffmpeg',
+                            '-i', media_file,  # 输入文件
+                            '-r', str(self.fps),  # 设置帧率
+                            '-an',  # 去除音频
+                            '-vf',
+                            f"split[original][blur];[blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
+                            f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
+                            f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
+                            f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
+                            f"[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
+                            '-y',
+                            output_name
+                        ]
+                    else:
+                        command = [
+                            'ffmpeg',
+                            '-i', media_file,  # 输入文件
+                            '-r', str(self.fps),  # 设置帧率
+                            '-an',  # 去除音频
+                            '-vf',
+                            f"split[original][blur];[blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
+                            f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
+                            f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
+                            f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
+                            f"[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
+                            '-y',
+                            output_name
+                        ]
+                    # 执行FFmpeg命令
+                    print(" ".join(command))
+                    run_ffmpeg_command(command)
                 
             return_video_list.append(output_name)
         
