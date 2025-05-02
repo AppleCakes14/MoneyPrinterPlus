@@ -549,8 +549,7 @@ class VideoService:
                             '-preset', 'fast' if use_gpu else 'medium',
                             '-t', str(self.default_duration),
                             '-r', str(self.fps),
-                            '-vf',
-                            f'[in]split[original][blur]; [blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred]; [original]scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:min(ih,{self.target_height}):0:0[scaled]; [blurred][scaled]overlay=(W-w)/2:(H-h)/2,format=yuv420p[out]',
+                            '-vf', f"split[original][blur];[blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred];[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p", 
                             '-y', output_name
                         ]
                     
