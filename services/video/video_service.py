@@ -351,19 +351,22 @@ class VideoService:
                         '-r', str(self.fps),
                         '-vf',
                         f'scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
-                        '-y', output_name]
+                        '-y', output_name
+                    ]
+
                 else:
                     # ffmpeg_cmd = f"ffmpeg -loop 1 -i '{media_file}' -c:v h264 -t {self.default_duration} -r {self.fps} -vf 'scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2' -y {output_name}"
                     ffmpeg_cmd = [
-                        'ffmpeg',
-                        '-loop', '1',
-                        '-i', media_file,
-                        '-c:v', 'h264',
-                        '-t', str(self.default_duration),
-                        '-r', str(self.fps),
-                        '-vf',
-                        f'scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
-                        '-y', output_name]
+                    'ffmpeg',
+                    '-loop', '1',
+                    '-i', media_file,
+                    '-c:v', 'h264',
+                    '-t', str(self.default_duration),
+                    '-r', str(self.fps),
+                    '-vf',
+                    f'scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+                    '-y', output_name
+                ]
                 print(" ".join(ffmpeg_cmd))
                 subprocess.run(ffmpeg_cmd, check=True, capture_output=True)
                 return_video_list.append(output_name)
@@ -486,6 +489,148 @@ class VideoService:
                 #     os.remove(media_file)
                 #     os.renames(output_name, media_file)
                 return_video_list.append(output_name)
+        self.video_list = return_video_list
+        return return_video_list
+
+    def normalize_video_portrait(self):
+        """Convert videos to portrait format with blurred background for landscape content with GPU acceleration"""
+        return_video_list = []
+        
+        # Determine if GPU acceleration is available and which type to use
+        # This implementation focuses on NVIDIA GPUs (NVENC)
+        try:
+            # Check for NVIDIA GPU
+            gpu_check = subprocess.run(['ffmpeg', '-hide_banner', '-hwaccel', 'cuda', '-f', 'lavfi', 
+                                       '-i', 'nullsrc', '-frames:v', '1', '-f', 'null', '-'], 
+                                       stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            use_gpu = "cuda" in gpu_check.stderr.decode('utf-8', errors='ignore')
+        except:
+            use_gpu = False
+        
+        for media_file in self.video_list:
+            # Create output filename
+            output_name = generate_temp_filename(media_file, ".mp4" if media_file.lower().endswith(('.jpg', '.jpeg', '.png')) else "", work_output_dir)
+            
+            if media_file.lower().endswith(('.jpg', '.jpeg', '.png')):
+                # Handle image files
+                try:
+                    img_width, img_height = get_image_info(media_file)
+                    
+                    # Set encoder based on GPU availability
+                    vcodec = 'h264_nvenc' if use_gpu else 'libx264'
+                    hw_accel = ['-hwaccel', 'cuda'] if use_gpu else []
+                    
+                    # Ensure exact target dimensions for all outputs to avoid transition errors
+                    if img_height >= img_width:
+                        # Portrait image
+                        ffmpeg_cmd = [
+                            'ffmpeg',
+                            *hw_accel,
+                            '-loop', '1',
+                            '-i', media_file,
+                            '-c:v', vcodec,
+                            '-pix_fmt', 'yuv420p',
+                            '-preset', 'fast' if use_gpu else 'medium',
+                            '-t', str(self.default_duration),
+                            '-r', str(self.fps),
+                            '-vf',
+                            f'scale=-1:{self.target_height}:force_original_aspect_ratio=1,pad={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2:black',
+                            '-y', output_name
+                        ]
+                    else:
+                        # Landscape image - blurred background
+                        ffmpeg_cmd = [
+                            'ffmpeg',
+                            *hw_accel,
+                            '-loop', '1',
+                            '-i', media_file,
+                            '-c:v', vcodec,
+                            '-pix_fmt', 'yuv420p',
+                            '-preset', 'fast' if use_gpu else 'medium',
+                            '-t', str(self.default_duration),
+                            '-r', str(self.fps),
+                            '-vf',
+                            f'[in]split[original][blur]; [blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred]; [original]scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:min(ih,{self.target_height}):0:0[scaled]; [blurred][scaled]overlay=(W-w)/2:(H-h)/2,format=yuv420p[out]',
+                            '-y', output_name
+                        ]
+                    
+                    print(" ".join(ffmpeg_cmd))
+                    subprocess.run(ffmpeg_cmd, check=True, capture_output=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"Error processing image: {e}")
+                    # Simplest fallback that should always work - without GPU
+                    fallback_cmd = [
+                        'ffmpeg',
+                        '-loop', '1',
+                        '-i', media_file,
+                        '-c:v', 'libx264',
+                        '-pix_fmt', 'yuv420p',
+                        '-t', str(self.default_duration),
+                        '-r', str(self.fps),
+                        '-vf', f'scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=decrease,pad={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2:black',
+                        '-y', output_name
+                    ]
+                    subprocess.run(fallback_cmd, check=True)
+                    
+            else:
+                # Video files - ensure they all have exact same dimensions
+                try:
+                    video_width, video_height = get_video_info(media_file)
+                    
+                    # Set encoder based on GPU availability
+                    vcodec = 'h264_nvenc' if use_gpu else 'libx264'
+                    hw_accel = ['-hwaccel', 'cuda'] if use_gpu else []
+                    
+                    if video_height >= video_width:
+                        # Portrait video
+                        command = [
+                            'ffmpeg',
+                            *hw_accel,
+                            '-i', media_file,
+                            '-c:v', vcodec,
+                            '-pix_fmt', 'yuv420p',
+                            '-preset', 'fast' if use_gpu else 'medium',
+                            '-r', str(self.fps),
+                            '-an',
+                            '-vf',
+                            f'scale=-1:{self.target_height}:force_original_aspect_ratio=1,pad={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2:black',
+                            '-y', output_name
+                        ]
+                    else:
+                        # Landscape video - blurred background with simpler filter
+                        command = [
+                            'ffmpeg',
+                            *hw_accel,
+                            '-i', media_file,
+                            '-c:v', vcodec,
+                            '-pix_fmt', 'yuv420p',
+                            '-preset', 'fast' if use_gpu else 'medium',
+                            '-r', str(self.fps),
+                            '-an',
+                            '-vf',
+                            f'[in]split[original][blur]; [blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred]; [original]scale=-1:{int(self.target_height*0.7)}:force_original_aspect_ratio=1[scaled]; [blurred][scaled]overlay=(W-w)/2:(H-h)/2,format=yuv420p[out]',
+                            '-y', output_name
+                        ]
+                    
+                    print(" ".join(command))
+                    run_ffmpeg_command(command)
+                except Exception as e:
+                    print(f"Error processing video: {e}")
+                    # Simplest fallback - without GPU
+                    fallback_cmd = [
+                        'ffmpeg',
+                        '-i', media_file,
+                        '-pix_fmt', 'yuv420p',
+                        '-c:v', 'libx264',
+                        '-r', str(self.fps),
+                        '-an',
+                        '-vf', f'scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=decrease,pad={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2:black',
+                        '-y', output_name
+                    ]
+                    run_ffmpeg_command(fallback_cmd)
+                
+            return_video_list.append(output_name)
+        
         self.video_list = return_video_list
         return return_video_list
 
