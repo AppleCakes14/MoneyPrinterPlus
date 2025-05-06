@@ -38,6 +38,10 @@ def install_requirement(headless: bool = False):
     setup_common.install_requirements_inbulk(
         "requirements.txt", show_stdout=True, upgrade=False
     )
+    
+    setup_common.install_requirements_inbulk(
+        "requirements_new.txt", show_stdout=True, upgrade=False
+    )
 
 if __name__ == "__main__":
 
