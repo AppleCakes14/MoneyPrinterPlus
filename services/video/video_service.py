@@ -251,7 +251,7 @@ class VideoMixService:
         matching_videos = []
         # 获取音频时长
         audio_duration = get_audio_duration(audio_file)
-        print("音频时长:" + str(audio_duration))
+        # print("音频时长:" + str(audio_duration))
 
         # 获取媒体文件夹中的所有图片和视频文件
         media_files = [os.path.join(video_dir, f) for f in os.listdir(video_dir) if
@@ -286,7 +286,7 @@ class VideoMixService:
             print("total length:", total_length, "audio length:", audio_duration)
             if total_length < audio_duration:
                 if self.enable_video_transition_effect:
-                    if i == 0 and is_head:
+                    if (i == 0 and is_head) or total_length + video_duration >= audio_duration:
                         total_length = total_length + video_duration
                     else:
                         total_length = total_length + video_duration - float(
@@ -331,181 +331,174 @@ class VideoService:
         if DEFAULT_DURATION < self.seg_min_duration:
             self.default_duration = self.seg_min_duration
 
+    # def normalize_video(self):
+    #     return_video_list = []
+    #     for media_file in self.video_list:
+    #         # 如果当前文件是图片，添加转换为视频的命令
+    #         if media_file.lower().endswith(('.jpg', '.jpeg', '.png')):
+    #             output_name = generate_temp_filename(media_file, ".mp4", work_output_dir)
+    #             # 判断图片的纵横比和
+    #             img_width, img_height = get_image_info(media_file)
+    #             if img_width / img_height > self.target_width / self.target_height:
+    #                 # 转换图片为视频片段 图片的视频帧率必须要跟视频的帧率一样，否则可能在最后的合并过程中导致 合并过后的视频过长
+    #                 # ffmpeg_cmd = f"ffmpeg -loop 1 -i '{media_file}' -c:v h264 -t {self.default_duration} -r {self.fps} -vf 'scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2' -y {output_name}"
+    #                 ffmpeg_cmd = [
+    #                     'ffmpeg',
+    #                     '-loop', '1',
+    #                     '-i', media_file,
+    #                     '-c:v', 'h264',
+    #                     '-t', str(self.default_duration),
+    #                     '-r', str(self.fps),
+    #                     '-vf',
+    #                     f'scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+    #                     '-y', output_name
+    #                 ]
+
+    #             else:
+    #                 # ffmpeg_cmd = f"ffmpeg -loop 1 -i '{media_file}' -c:v h264 -t {self.default_duration} -r {self.fps} -vf 'scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2' -y {output_name}"
+    #                 ffmpeg_cmd = [
+    #                 'ffmpeg',
+    #                 '-loop', '1',
+    #                 '-i', media_file,
+    #                 '-c:v', 'h264',
+    #                 '-t', str(self.default_duration),
+    #                 '-r', str(self.fps),
+    #                 '-vf',
+    #                 f'scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+    #                 '-y', output_name
+    #             ]
+    #             print(" ".join(ffmpeg_cmd))
+    #             subprocess.run(ffmpeg_cmd, check=True, capture_output=True)
+    #             return_video_list.append(output_name)
+
+    #         else:
+    #             # 当前文件是视频文件
+    #             video_duration = get_video_duration(media_file)
+    #             video_width, video_height = get_video_info(media_file)
+    #             output_name = generate_temp_filename(media_file, new_directory=work_output_dir)
+    #             if self.seg_min_duration > video_duration:
+    #                 # 需要扩展视频
+    #                 stretch_factor = float(self.seg_min_duration) / float(video_duration)  # 拉长比例
+    #                 # 构建FFmpeg命令
+    #                 if video_width / video_height > self.target_width / self.target_height:
+    #                     command = [
+    #                         'ffmpeg',
+    #                         '-i', media_file,  # 输入文件
+    #                         '-r', str(self.fps),  # 设置帧率
+    #                         '-an',  # 去除音频
+    #                         '-vf',
+    #                         f"setpts={stretch_factor}*PTS,scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2",
+    #                         # 调整时间戳滤镜
+    #                         # '-vf', f'scale=-1:{self.target_height}:force_original_aspect_ratio=1',  # 设置视频滤镜来调整分辨率
+    #                         # '-vf', f'crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+    #                         # '-af', f'atempo={1 / stretch_factor}',  # 调整音频速度以匹配视频
+    #                         '-y',
+    #                         output_name  # 输出文件
+    #                     ]
+    #                 else:
+    #                     command = [
+    #                         'ffmpeg',
+    #                         '-i', media_file,  # 输入文件
+    #                         '-r', str(self.fps),  # 设置帧率
+    #                         '-an',  # 去除音频
+    #                         '-vf',
+    #                         f"setpts={stretch_factor}*PTS,scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2",
+    #                         # 调整时间戳滤镜
+    #                         # '-vf', f'scale={self.target_width}:-1:force_original_aspect_ratio=1',  # 设置视频滤镜来调整分辨率
+    #                         # '-vf', f'crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+    #                         # '-af', f'atempo={1 / stretch_factor}',  # 调整音频速度以匹配视频
+    #                         '-y',
+    #                         output_name  # 输出文件
+    #                     ]
+    #                 # 执行FFmpeg命令
+    #                 print(" ".join(command))
+    #                 run_ffmpeg_command(command)
+    #             elif self.seg_max_duration < video_duration:
+    #                 # 需要裁减视频
+    #                 if video_width / video_height > self.target_width / self.target_height:
+    #                     cmd = [
+    #                         'ffmpeg',
+    #                         '-i', media_file,
+    #                         '-r', str(self.fps),  # 设置帧率
+    #                         '-an',  # 去除音频
+    #                         # '-ss', '00:00:00',
+    #                         '-t', str(self.seg_max_duration),
+    #                         # '-c', 'copy',
+    #                         # '-vcodec', 'copy',
+    #                         # '-acodec', 'copy',
+    #                         '-vf',
+    #                         f"scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2",
+    #                         # 设置视频滤镜来调整分辨率
+    #                         # '-vf', f'crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+    #                         '-y',
+    #                         output_name
+    #                     ]
+    #                 else:
+    #                     cmd = [
+    #                         'ffmpeg',
+    #                         '-i', media_file,
+    #                         '-r', str(self.fps),  # 设置帧率
+    #                         '-an',  # 去除音频
+    #                         # '-ss', '00:00:00',
+    #                         '-t', str(self.seg_max_duration),
+    #                         # '-c', 'copy',
+    #                         # '-vcodec', 'copy',
+    #                         # '-acodec', 'copy',
+    #                         '-vf',
+    #                         f"scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2",
+    #                         # 设置视频滤镜来调整分辨率
+    #                         # '-vf', f'crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+    #                         '-y',
+    #                         output_name
+    #                     ]
+    #                 print(" ".join(cmd))
+    #                 run_ffmpeg_command(cmd)
+    #             else:
+    #                 # 不需要拉伸也不需要裁剪，只需要调整分辨率和fps
+    #                 if video_width / video_height > self.target_width / self.target_height:
+    #                     command = [
+    #                         'ffmpeg',
+    #                         '-i', media_file,  # 输入文件
+    #                         '-r', str(self.fps),  # 设置帧率
+    #                         '-an',  # 去除音频
+    #                         '-vf',
+    #                         f"scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2",
+    #                         # 设置视频滤镜来调整分辨率
+    #                         # '-vf', f'crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+    #                         '-y',
+    #                         output_name  # 输出文件
+    #                     ]
+    #                 else:
+    #                     command = [
+    #                         'ffmpeg',
+    #                         '-i', media_file,  # 输入文件
+    #                         '-r', str(self.fps),  # 设置帧率
+    #                         '-an',  # 去除音频
+    #                         '-vf',
+    #                         f"scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2",
+    #                         # 设置视频滤镜来调整分辨率
+    #                         # '-vf', f'crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+    #                         '-y',
+    #                         output_name  # 输出文件
+    #                     ]
+    #                 # 执行FFmpeg命令
+    #                 print(" ".join(command))
+    #                 run_ffmpeg_command(command)
+    #             # 重命名最终的文件
+    #             # if os.path.exists(output_name):
+    #             #     os.remove(media_file)
+    #             #     os.renames(output_name, media_file)
+    #             return_video_list.append(output_name)
+    #     self.video_list = return_video_list
+    #     return return_video_list
+
+    # def normalize_video_portrait(self):
     def normalize_video(self):
-        return_video_list = []
-        for media_file in self.video_list:
-            # 如果当前文件是图片，添加转换为视频的命令
-            if media_file.lower().endswith(('.jpg', '.jpeg', '.png')):
-                output_name = generate_temp_filename(media_file, ".mp4", work_output_dir)
-                # 判断图片的纵横比和
-                img_width, img_height = get_image_info(media_file)
-                if img_width / img_height > self.target_width / self.target_height:
-                    # 转换图片为视频片段 图片的视频帧率必须要跟视频的帧率一样，否则可能在最后的合并过程中导致 合并过后的视频过长
-                    # ffmpeg_cmd = f"ffmpeg -loop 1 -i '{media_file}' -c:v h264 -t {self.default_duration} -r {self.fps} -vf 'scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2' -y {output_name}"
-                    ffmpeg_cmd = [
-                        'ffmpeg',
-                        '-loop', '1',
-                        '-i', media_file,
-                        '-c:v', 'h264',
-                        '-t', str(self.default_duration),
-                        '-r', str(self.fps),
-                        '-vf',
-                        f'scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
-                        '-y', output_name
-                    ]
-
-                else:
-                    # ffmpeg_cmd = f"ffmpeg -loop 1 -i '{media_file}' -c:v h264 -t {self.default_duration} -r {self.fps} -vf 'scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2' -y {output_name}"
-                    ffmpeg_cmd = [
-                    'ffmpeg',
-                    '-loop', '1',
-                    '-i', media_file,
-                    '-c:v', 'h264',
-                    '-t', str(self.default_duration),
-                    '-r', str(self.fps),
-                    '-vf',
-                    f'scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
-                    '-y', output_name
-                ]
-                print(" ".join(ffmpeg_cmd))
-                subprocess.run(ffmpeg_cmd, check=True, capture_output=True)
-                return_video_list.append(output_name)
-
-            else:
-                # 当前文件是视频文件
-                video_duration = get_video_duration(media_file)
-                video_width, video_height = get_video_info(media_file)
-                output_name = generate_temp_filename(media_file, new_directory=work_output_dir)
-                if self.seg_min_duration > video_duration:
-                    # 需要扩展视频
-                    stretch_factor = float(self.seg_min_duration) / float(video_duration)  # 拉长比例
-                    # 构建FFmpeg命令
-                    if video_width / video_height > self.target_width / self.target_height:
-                        command = [
-                            'ffmpeg',
-                            '-i', media_file,  # 输入文件
-                            '-r', str(self.fps),  # 设置帧率
-                            '-an',  # 去除音频
-                            '-vf',
-                            f"setpts={stretch_factor}*PTS,scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2",
-                            # 调整时间戳滤镜
-                            # '-vf', f'scale=-1:{self.target_height}:force_original_aspect_ratio=1',  # 设置视频滤镜来调整分辨率
-                            # '-vf', f'crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
-                            # '-af', f'atempo={1 / stretch_factor}',  # 调整音频速度以匹配视频
-                            '-y',
-                            output_name  # 输出文件
-                        ]
-                    else:
-                        command = [
-                            'ffmpeg',
-                            '-i', media_file,  # 输入文件
-                            '-r', str(self.fps),  # 设置帧率
-                            '-an',  # 去除音频
-                            '-vf',
-                            f"setpts={stretch_factor}*PTS,scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2",
-                            # 调整时间戳滤镜
-                            # '-vf', f'scale={self.target_width}:-1:force_original_aspect_ratio=1',  # 设置视频滤镜来调整分辨率
-                            # '-vf', f'crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
-                            # '-af', f'atempo={1 / stretch_factor}',  # 调整音频速度以匹配视频
-                            '-y',
-                            output_name  # 输出文件
-                        ]
-                    # 执行FFmpeg命令
-                    print(" ".join(command))
-                    run_ffmpeg_command(command)
-                elif self.seg_max_duration < video_duration:
-                    # 需要裁减视频
-                    if video_width / video_height > self.target_width / self.target_height:
-                        cmd = [
-                            'ffmpeg',
-                            '-i', media_file,
-                            '-r', str(self.fps),  # 设置帧率
-                            '-an',  # 去除音频
-                            # '-ss', '00:00:00',
-                            '-t', str(self.seg_max_duration),
-                            # '-c', 'copy',
-                            # '-vcodec', 'copy',
-                            # '-acodec', 'copy',
-                            '-vf',
-                            f"scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2",
-                            # 设置视频滤镜来调整分辨率
-                            # '-vf', f'crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
-                            '-y',
-                            output_name
-                        ]
-                    else:
-                        cmd = [
-                            'ffmpeg',
-                            '-i', media_file,
-                            '-r', str(self.fps),  # 设置帧率
-                            '-an',  # 去除音频
-                            # '-ss', '00:00:00',
-                            '-t', str(self.seg_max_duration),
-                            # '-c', 'copy',
-                            # '-vcodec', 'copy',
-                            # '-acodec', 'copy',
-                            '-vf',
-                            f"scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2",
-                            # 设置视频滤镜来调整分辨率
-                            # '-vf', f'crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
-                            '-y',
-                            output_name
-                        ]
-                    print(" ".join(cmd))
-                    run_ffmpeg_command(cmd)
-                else:
-                    # 不需要拉伸也不需要裁剪，只需要调整分辨率和fps
-                    if video_width / video_height > self.target_width / self.target_height:
-                        command = [
-                            'ffmpeg',
-                            '-i', media_file,  # 输入文件
-                            '-r', str(self.fps),  # 设置帧率
-                            '-an',  # 去除音频
-                            '-vf',
-                            f"scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2",
-                            # 设置视频滤镜来调整分辨率
-                            # '-vf', f'crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
-                            '-y',
-                            output_name  # 输出文件
-                        ]
-                    else:
-                        command = [
-                            'ffmpeg',
-                            '-i', media_file,  # 输入文件
-                            '-r', str(self.fps),  # 设置帧率
-                            '-an',  # 去除音频
-                            '-vf',
-                            f"scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2",
-                            # 设置视频滤镜来调整分辨率
-                            # '-vf', f'crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
-                            '-y',
-                            output_name  # 输出文件
-                        ]
-                    # 执行FFmpeg命令
-                    print(" ".join(command))
-                    run_ffmpeg_command(command)
-                # 重命名最终的文件
-                # if os.path.exists(output_name):
-                #     os.remove(media_file)
-                #     os.renames(output_name, media_file)
-                return_video_list.append(output_name)
-        self.video_list = return_video_list
-        return return_video_list
-
-    def normalize_video_portrait(self):
         """Convert videos to portrait format with blurred background for landscape content with GPU acceleration"""
         return_video_list = []
         
         # Determine if GPU acceleration is available and which type to use
         # This implementation focuses on NVIDIA GPUs (NVENC)
-        try:
-            # Check for NVIDIA GPU
-            gpu_check = subprocess.run(['ffmpeg', '-hide_banner', '-hwaccel', 'cuda', '-f', 'lavfi', 
-                                       '-i', 'nullsrc', '-frames:v', '1', '-f', 'null', '-'], 
-                                       stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            use_gpu = "cuda" in gpu_check.stderr.decode('utf-8', errors='ignore')
-        except:
-            use_gpu = False
         
         for media_file in self.video_list:
             # Create output filename
@@ -515,27 +508,21 @@ class VideoService:
                 # Handle image files
                 try:
                     img_width, img_height = get_image_info(media_file)
-                    
-                    # Set encoder based on GPU availability
-                    vcodec = 'h264_nvenc' if use_gpu else 'libx264'
-                    hw_accel = ['-hwaccel', 'cuda'] if use_gpu else []
-                    
                     # Ensure exact target dimensions for all outputs to avoid transition errors
                     if img_height >= img_width:
                         # Portrait image with background
                         ffmpeg_cmd = [
                             'ffmpeg',
-                            *hw_accel,
                             '-loop', '1',  # Loop the image (create a video from an image)
                             '-i', media_file,  # Input image file
-                            '-c:v', vcodec,  # Video codec
+                            '-c:v', 'libx264',  # Video codec
                             '-pix_fmt', 'yuv420p',  # Pixel format (to ensure compatibility)
-                            '-preset', 'fast' if use_gpu else 'medium',  # Encoder preset
+                            '-preset', 'medium',  # Encoder preset
                             '-t', str(self.default_duration),  # Video duration
                             '-r', str(self.fps),  # Frame rate
                             '-vf',
                             f"split[original][blur];"
-                            f"[blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred];"  # Create a blurred background
+                            f"[blur]scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=increase,crop={self.target_width}:{self.target_height},boxblur=20:5[blurred];"  # Create a blurred background
                             f"[original]scale=-1:{self.target_height}:force_original_aspect_ratio=1[scaled];"  # Resize the portrait to fit the target height
                             f"[blurred][scaled]overlay=(W-w)/2:(H-h)/2,format=yuv420p",  # Center the portrait on the blurred background
                             '-y',  # Overwrite output file if it exists
@@ -545,15 +532,18 @@ class VideoService:
                         # Landscape image - blurred background
                         ffmpeg_cmd = [
                             'ffmpeg',
-                            *hw_accel,
                             '-loop', '1',
                             '-i', media_file,
-                            '-c:v', vcodec,
+                            '-c:v', 'libx264',
                             '-pix_fmt', 'yuv420p',
-                            '-preset', 'fast' if use_gpu else 'medium',
+                            '-preset', 'medium',
                             '-t', str(self.default_duration),
                             '-r', str(self.fps),
-                            '-vf', f"split[original][blur];[blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred];[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p", 
+                            '-vf', 
+                            f"split[original][blur];"
+                            f"[blur]scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=increase,crop={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
+                            f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
+                            f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p", 
                             '-y', output_name
                         ]
                     
@@ -592,8 +582,8 @@ class VideoService:
                             '-r', str(self.fps),  # 设置帧率
                             '-an',  # 去除音频
                             '-vf',
-                            f"setpts={stretch_factor}*PTS,split[original][blur];[blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
-                            f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
+                            f"setpts={stretch_factor}*PTS,split[original][blur];[blur]scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=increase,crop={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
+                            f"[original]scale=-1:{self.target_height}:force_original_aspect_ratio=1[scaled];"
                             f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
                             f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
                             f"[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
@@ -607,7 +597,7 @@ class VideoService:
                             '-r', str(self.fps),  # 设置帧率
                             '-an',  # 去除音频
                             '-vf',
-                            f"setpts={stretch_factor}*PTS,split[original][blur];[blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
+                            f"setpts={stretch_factor}*PTS,split[original][blur];[blur]scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=increase,crop={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
                             f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
                             f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
                             f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
@@ -630,8 +620,8 @@ class VideoService:
                             '-an',  # 去除音频
                             '-t', str(self.seg_max_duration),
                             '-vf',
-                            f"split[original][blur];[blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
-                            f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
+                            f"split[original][blur];[blur]scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=increase,crop={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
+                            f"[original]scale=-1:{self.target_height}:force_original_aspect_ratio=1[scaled];"
                             f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
                             f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
                             f"[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
@@ -646,7 +636,7 @@ class VideoService:
                             '-an',  # 去除音频
                             '-t', str(self.seg_max_duration),
                             '-vf',
-                            f"split[original][blur];[blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
+                            f"split[original][blur];[blur]scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=increase,crop={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
                             f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
                             f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
                             f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
@@ -667,8 +657,8 @@ class VideoService:
                             '-r', str(self.fps),  # 设置帧率
                             '-an',  # 去除音频
                             '-vf',
-                            f"split[original][blur];[blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
-                            f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
+                            f"split[original][blur];[blur]scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=increase,crop={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
+                            f"[original]scale=-1:{self.target_height}:force_original_aspect_ratio=1[scaled];"
                             f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
                             f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
                             f"[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
@@ -682,7 +672,7 @@ class VideoService:
                             '-r', str(self.fps),  # 设置帧率
                             '-an',  # 去除音频
                             '-vf',
-                            f"split[original][blur];[blur]scale={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
+                            f"split[original][blur];[blur]scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=increase,crop={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
                             f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
                             f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
                             f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"

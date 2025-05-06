@@ -143,17 +143,67 @@ def random_video_from_dir(video_dir):
     media_files = [os.path.join(video_dir, f) for f in os.listdir(video_dir) if
                    f.lower().endswith(('.jpg', '.jpeg', '.png', '.mp4', '.mov'))]
 
-    # 随机排序媒体文件
-    random.shuffle(media_files)
+    # Get any existing video files
+    video_files = [f for f in media_files if f.lower().endswith(('.mp4', '.mov'))]
+    
+    # Convert image files to video if needed
+    if not video_files:
+        image_files = [f for f in media_files if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+        if image_files:
+            # Random select an image to convert
+            image_file = random.choice(image_files)
+            
+            # Convert image to video
+            fps = st.session_state.get("video_fps", 30)
+            target_width, target_height = st.session_state.get("video_size", "1920x1080").split('x')
+            target_width, target_height = int(target_width), int(target_height)
+            
+            # Create a temporary video file
+            output_name = generate_temp_filename(image_file, ".mp4", work_output_dir)
+            
+            # Within random_video_from_dir function
+            ffmpeg_cmd = [
+                'ffmpeg',
+                '-loop', '1',
+                '-i', image_file,
+                '-t', str(DEFAULT_DURATION),
+                '-r', str(fps),
+                '-c:v', 'libx264',
+                '-filter_complex',
+                f"[0:v]scale={target_width}:{target_height},boxblur=10:1[bg];"
+                f"[0:v]scale=w={target_width}:h={target_height}:force_original_aspect_ratio=decrease[fg];"
+                f"[bg][fg]overlay=(W-w)/2:(H-h)/2",
+                '-y', output_name
+            ]
+            print(" ".join(ffmpeg_cmd))
+            subprocess.run(ffmpeg_cmd, check=True, capture_output=True)
 
-    # 确保有视频文件在列表中
-    video_files = [os.path.join(video_dir, f) for f in media_files if f.lower().endswith(('.mp4', '.mov'))]
+            # Add audio to the video (Silent audio)
+            output_with_audio = output_name.replace(".mp4", "_audio.mp4")
+            add_audio_cmd = [
+                'ffmpeg',
+                '-i', output_name,                     # input video without audio
+                '-f', 'lavfi',                         # use lavfi to generate audio
+                '-t', str(DEFAULT_DURATION),           # match video duration
+                '-i', 'anullsrc=r=44100:cl=stereo',    # generate silent audio
+                '-c:v', 'copy',                        # copy video stream as-is
+                '-c:a', 'aac',                         # encode audio in AAC
+                '-shortest',                           # cut audio if longer than video
+                '-y', output_with_audio                # output file with audio
+            ]
+            print(" ".join(add_audio_cmd))
+            subprocess.run(add_audio_cmd, check=True, capture_output=True)
+
+            # Replace output_name with the new file that includes audio
+            output_name = output_with_audio
+            return output_name
+    
+    # If we have video files, choose one randomly
     if video_files:
-        # 从视频文件中随机选择一个
-        random_video = random.choice(video_files)
+        return random.choice(video_files)
     else:
-        random_video = random.choice(media_files)
-    return random_video
+        # Should not reach here if conversion worked
+        return random.choice(media_files)
 
 
 class VideoMergeService:
@@ -192,7 +242,7 @@ class VideoMergeService:
                         '-t', str(self.default_duration),
                         '-r', str(self.fps),
                         '-vf',
-                        f'scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2'
+                        f'scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
                         '-y', output_name]
                 else:
                     ffmpeg_cmd = [
@@ -203,7 +253,7 @@ class VideoMergeService:
                         '-t', str(self.default_duration),
                         '-r', str(self.fps),
                         '-vf',
-                        f'scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2'
+                        f'scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
                         '-y', output_name]
                 print(" ".join(ffmpeg_cmd))
                 subprocess.run(ffmpeg_cmd, check=True, capture_output=True)
@@ -243,6 +293,60 @@ class VideoMergeService:
                 print(" ".join(command))
                 run_ffmpeg_command(command)
                 return_video_list.append(output_name)
+        self.video_list = return_video_list
+        return return_video_list
+
+    def normalize_video_portrait(self):
+        return_video_list = []
+        for media_file in self.video_list:
+            # 创建新的输出文件名
+            output_name = generate_temp_filename(media_file, new_directory=work_output_dir)
+            
+            # 获取源视频/图片信息
+            if media_file.lower().endswith(('.jpg', '.jpeg', '.png')):
+                width, height = get_image_info(media_file)
+                # 为图片创建视频命令
+                ffmpeg_cmd = [
+                    'ffmpeg',
+                    '-loop', '1',
+                    '-i', media_file,
+                    '-t', str(self.default_duration),
+                    '-r', str(self.fps),
+                    '-c:v', 'libx264',
+                    '-vf',
+                    f"""
+                    [0:v]scale={self.target_width}:{self.target_height},boxblur=10:1[bg];
+                    [0:v]scale=w={self.target_width}:h={self.target_height}:force_original_aspect_ratio=decrease[fg];
+                    [bg][fg]overlay=(W-w)/2:(H-h)/2
+                    """.replace("\n", "").replace("    ", ""),
+                    '-y', output_name
+                ]
+                print(" ".join(ffmpeg_cmd))
+                subprocess.run(ffmpeg_cmd, check=True, capture_output=True)
+            else:
+                # 处理视频文件
+                video_width, video_height = get_video_info(media_file)
+                # 计算保持原始宽高比的缩放尺寸
+                new_width = min(video_width, self.target_width)
+                scaled_height = int(new_width * video_height / video_width)
+                
+                command = [
+                    'ffmpeg',
+                    '-i', media_file,
+                    '-r', str(self.fps),
+                    '-vf',
+                    f"""
+                    [0:v]scale={self.target_width}:{self.target_height},boxblur=10:1[bg];
+                    [0:v]scale=w={self.target_width}:h={self.target_height}:force_original_aspect_ratio=decrease[fg];
+                    [bg][fg]overlay=(W-w)/2:(H-h)/2
+                    """.replace("\n", "").replace("    ", ""),
+                    '-y', output_name
+                ]
+                print(" ".join(command))
+                run_ffmpeg_command(command)
+                
+            return_video_list.append(output_name)
+        
         self.video_list = return_video_list
         return return_video_list
 
