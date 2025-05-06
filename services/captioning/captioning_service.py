@@ -249,6 +249,27 @@ def add_subtitles(video_file, subtitle_file, font_name='Songti TC Bold', font_si
         'ffmpeg',
         '-i', video_file,  # 输入视频文件
         '-vf', vf_text,  # 输入字幕文件
+    ]
+    # 检查是否有GPU可用
+    try:
+        # 检查NVIDIA编码器是否可用
+        check_cmd = ['ffmpeg', '-hide_banner', '-encoders']
+        result = subprocess.run(check_cmd, capture_output=True, text=True)
+            
+        # 根据可用的NVIDIA编码器选择合适的选项
+        if 'h264_nvenc' in result.stdout:
+            ffmpeg_cmd.extend([
+                '-c:v', 'h264_nvenc',  # 使用NVIDIA H.264编码器
+                '-preset', 'p1',       # 编码速度预设 (可选值: p1-p7, p1最快)
+                '-tune', 'hq',         # 高质量设置
+                ])
+        else:
+            print("NVIDIA GPU encoders not available, falling back to CPU")
+    except Exception as e:
+        print(f"Error checking GPU encoders: {e}. Using CPU instead.")    
+    
+    # 添加其他必要的参数
+    ffmpeg_cmd.extend([
         '-y',
         output_file  # 输出文件
     ])
