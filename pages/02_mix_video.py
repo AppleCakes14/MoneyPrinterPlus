@@ -379,7 +379,8 @@ with bg_music_container:
     with llm_columns[1]:
         nest_columns = st.columns(3)
         with nest_columns[0]:
-            st.checkbox(label=tr("Enable background music"), key="enable_background_music", value=True)
+            # st.checkbox(label=tr("Enable background music"), key="enable_background_music", value=True)
+            st.toggle(label=tr("Enable background music"), key="enable_background_music", value=True)
         with nest_columns[1]:
             bg_music_list = get_file_map_from_dir(st.session_state["background_music_dir"], ".mp3,.wav")
             st.selectbox(label=tr("Background music"), key="background_music",
@@ -420,14 +421,15 @@ with video_container:
                   key="video_segment_max_length")
     llm_columns = st.columns(4)
     with llm_columns[0]:
-        st.checkbox(label=tr("Enable video Transition effect"), key="enable_video_transition_effect", value=True)
+        # st.checkbox(label=tr("Enable video Transition effect"), key="enable_video_transition_effect", value=True)
+        st.toggle(label=tr("Enable video Transition effect"), key="enable_video_transition_effect", value=True)
     with llm_columns[1]:
         st.selectbox(label=tr("video Transition effect"), key="video_transition_effect_type", options=transition_types)
     with llm_columns[2]:
         st.selectbox(label=tr("video Transition effect types"), key="video_transition_effect_value", options=fade_list)
     with llm_columns[3]:
         st.selectbox(label=tr("video Transition effect duration"), key="video_transition_effect_duration",
-                     options=["1", "2"])
+                     options=["1", "2"], help=tr("Final length of video segment = video segment min length/max length - effect duration"),)
 
 # 字幕
 subtitle_container = st.container(border=True)
@@ -435,7 +437,8 @@ with subtitle_container:
     st.subheader(tr("Video Subtitles"))
     llm_columns = st.columns(4)
     with llm_columns[0]:
-        st.checkbox(label=tr("Enable subtitles"), key="enable_subtitles", value=True)
+        # st.checkbox(label=tr("Enable subtitles"), key="enable_subtitles", value=True)
+        st.toggle(label=tr("Enable subtitles"), key="enable_subtitles", value=True)
     with llm_columns[1]:
         st.selectbox(label=tr("subtitle font"), key="subtitle_font",
                      options=["Songti SC Bold",
@@ -462,7 +465,7 @@ with subtitle_container:
                                      6: "top center",
                                      7: "top right",
                                      9: "center left",
-                                     10: "center",
+                                     10: "center middle",
                                      11: "center right",
                                      1: "bottom left",
                                      2: "bottom center",
@@ -479,7 +482,10 @@ with subtitle_container:
 
     llm_columns = st.columns(4)
     with llm_columns[0]:
-        st.checkbox(label=tr("Enable punctuation"), key="enable_punctuation", value=False)
+        # st.checkbox(label=tr("Enable punctuation"), key="enable_punctuation", value=False)
+        st.toggle(label=tr("Enable punctuation"), key="enable_punctuation", value=False)
+    # with llm_columns[1]:
+    #     st.pills("Tags", options=subtitle_position_options, format_func=lambda x: subtitle_position_options[x])
 
 # 生成视频
 video_generator = st.container(border=True)

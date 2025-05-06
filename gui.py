@@ -182,6 +182,12 @@ def set_audio_region(provider, key):
     my_config['audio'][provider]['service_region'] = st.session_state[key]
     save_config()
 
+def set_audio_endpoint_id(provider, key):
+    if provider not in my_config['audio']:
+        my_config['audio'][provider] = {}
+    my_config['audio'][provider]['endpoint_id'] = st.session_state[key]
+    save_config()
+
 
 def set_llm_sk(provider, key):
     my_config['llm'][provider]['secret_key'] = st.session_state[key]
@@ -402,6 +408,14 @@ with audio_container:
                               on_change=set_audio_region,
                               key=audio_provider + "_service_region",
                               args=(audio_provider, audio_provider + '_service_region'))
+            audio_columns_2 = st.columns(1)
+            with audio_columns_2[0]:
+                st.text_input(label=f"{tr('Endpoint ID(Custom Speech-To-Text)')} (Optional)",
+                              type="password",
+                              value=my_config['audio'].get(audio_provider, {}).get('endpoint_id', ''),
+                              on_change=set_audio_endpoint_id,
+                              key=audio_provider + "_endpoint_id",
+                              args=(audio_provider, audio_provider + '_endpoint_id'))
         if audio_provider == 'Ali':
             st.info(tr("Audio Ali config"))
             audio_columns = st.columns(3)
