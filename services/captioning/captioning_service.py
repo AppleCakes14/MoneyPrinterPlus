@@ -251,7 +251,7 @@ def add_subtitles(video_file, subtitle_file, font_name='Songti TC Bold', font_si
         '-vf', vf_text,  # 输入字幕文件
         '-y',
         output_file  # 输出文件
-    ]
+    ])
     print(" ".join(ffmpeg_cmd))
     # 调用ffmpeg
     subprocess.run(ffmpeg_cmd, check=True)
