@@ -258,6 +258,16 @@ class Captioning(object):
 
         speech_config.set_profanity(self._user_config["profanity_option"])
 
+        if "endpoint_id" in self._user_config and self._user_config["endpoint_id"] and self._user_config["endpoint_id"] != "" \
+           and self._user_config["endpoint_id"] != None: 
+            try:
+                print("Applying endpoint ID...")
+                print(self._user_config["endpoint_id"])
+                speech_config.endpoint_id = self._user_config["endpoint_id"]
+            except Exception as e:
+                print("Error applying endpoint ID...")
+                raise ValueError(f"Invalid endpoint ID provided: {str(e)}")
+
         if self._user_config["stable_partial_result_threshold"] is not None:
             speech_config.set_property(
                 property_id=speechsdk.PropertyId.SpeechServiceResponse_StablePartialResultThreshold,
@@ -265,7 +275,6 @@ class Captioning(object):
 
         # Set language first
         speech_config.speech_recognition_language = self._user_config["language"]
-        
         
         # Control punctuation LAST - after all other settings
         print("Enabled Punctuation: ", st.session_state.get("enable_punctuation"))
