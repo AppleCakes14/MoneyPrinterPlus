@@ -127,7 +127,7 @@ def get_video_info(video_file):
 
     # 解析输出以获取宽度和高度
     output = result.stdout.decode('utf-8')
-    # print("output is:",output)
+    print("output is:",output)
     width_height = output.split('\n')
     width = int(width_height[0])
     height = int(width_height[1])
@@ -200,27 +200,39 @@ def add_music(video_file, audio_file):
 
 def add_background_music(video_file, audio_file, bgm_volume=0.5):
     output_file = generate_temp_filename(video_file)
-    # 构建FFmpeg命令
+    
+    # Get video duration
+    video_duration = get_video_duration(video_file)
+    
+    # Analyze music file to find good ending points
+    audio_fade_duration = 3  # 3 second fade-out by default
+    
+    # Build FFmpeg command with smooth fade-out
     command = [
         'ffmpeg',
-        '-i', video_file,  # 输入视频文件
-        '-i', audio_file,  # 输入音频文件（背景音乐）
+        '-i', video_file,  # Input video file
+        '-i', audio_file,  # Input audio file (background music)
         '-filter_complex',
-        f"[1:a]aloop=loop=0:size=100M[bgm];[bgm]volume={bgm_volume}[bgm_vol];[0:a][bgm_vol]amix=duration=first:dropout_transition=3:inputs=2[a]",
-        # 在[1:a]之后添加了aloop过滤器来循环背景音乐。loop=0表示无限循环，size=200M和duration=300是可选参数，用于设置循环音频的大小或时长（这里设置得很大以确保足够长，可以根据实际需要调整），start=0表示从音频的开始处循环。
-        '-map', '0:v',  # 选择视频流
-        '-map', '[a]',  # 选择混合后的音频流
-        '-c:v', 'copy',  # 复制视频流
-        '-shortest',  # 输出时长与最短的输入流相同
-        output_file  # 输出文件
+        f"[1:a]aloop=loop=-1:size=2G[infinite_bgm];" +
+        f"[infinite_bgm]volume={bgm_volume}[bgm_vol];" +
+        f"[bgm_vol]afade=t=out:st={video_duration-audio_fade_duration}:d={audio_fade_duration}[faded_bgm];" +
+        f"[0:a][faded_bgm]amix=duration=first:dropout_transition=2:weights=1 0.8[a]",
+        '-map', '0:v',  # Select video stream
+        '-map', '[a]',  # Select mixed audio stream
+        '-c:v', 'copy',  # Copy video stream
+        '-y',
+        output_file  # Output file
     ]
-    # 调用FFmpeg命令
-    print(command)
+    
+    # Run FFmpeg command
+    print(" ".join(command))
     result = subprocess.run(command, capture_output=True)
-    # 处理输出解码
+    
+    # Handle output decoding
     stdout = result.stdout.decode('gbk', errors='ignore')
     stderr = result.stderr.decode('gbk', errors='ignore')
-    # 重命名最终的文件
+    
+    # Rename final file
     if os.path.exists(output_file):
         os.remove(video_file)
         os.renames(output_file, video_file)
@@ -300,6 +312,9 @@ class VideoMixService:
                 extend_length = int(math.ceil(extend_length))
                 if extend_length > 0:
                     extent_audio(audio_file, extend_length)
+                # else:
+                #     # prevent stop instantly
+                #     extent_audio(audio_file, 1)
                 break
         print("total length:", total_length, "audio length:", audio_duration)
         if total_length < audio_duration:
@@ -613,22 +628,7 @@ class VideoService:
                     print("需要裁减视频...")
                     # 需要裁减视频
                     if video_width / video_height > self.target_width / self.target_height:
-                        cmd = [
-                            'ffmpeg',
-                            '-i', media_file,
-                            '-r', str(self.fps),  # 设置帧率
-                            '-an',  # 去除音频
-                            '-t', str(self.seg_max_duration),
-                            '-vf',
-                            f"split[original][blur];[blur]scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=increase,crop={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
-                            f"[original]scale=-1:{self.target_height}:force_original_aspect_ratio=1[scaled];"
-                            f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
-                            f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
-                            f"[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
-                            '-y',
-                            output_name
-                        ]
-                    else:
+                        # Process landscape video
                         cmd = [
                             'ffmpeg',
                             '-i', media_file,
@@ -638,6 +638,23 @@ class VideoService:
                             '-vf',
                             f"split[original][blur];[blur]scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=increase,crop={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
                             f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
+                            f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
+                            f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
+                            f"[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
+                            '-y',
+                            output_name
+                        ]
+                    else:
+                        # Process portrait video
+                        cmd = [
+                            'ffmpeg',
+                            '-i', media_file,
+                            '-r', str(self.fps),  # 设置帧率
+                            '-an',  # 去除音频
+                            '-t', str(self.seg_max_duration),
+                            '-vf',
+                            f"split[original][blur];[blur]scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=increase,crop={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
+                            f"[original]scale=-1:{self.target_height}:force_original_aspect_ratio=1[scaled];"
                             f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
                             f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
                             f"[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p",

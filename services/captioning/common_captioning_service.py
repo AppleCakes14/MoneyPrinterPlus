@@ -265,8 +265,8 @@ class Captioning(object):
                 print(self._user_config["endpoint_id"])
                 speech_config.endpoint_id = self._user_config["endpoint_id"]
             except Exception as e:
-                print("Error applying endpoint ID...")
-                raise ValueError(f"Invalid endpoint ID provided: {str(e)}")
+                print(f"Error applying endpoint ID: {str(e)}")
+                print("Continuing without custom endpoint ID...")
 
         if self._user_config["stable_partial_result_threshold"] is not None:
             speech_config.set_property(

@@ -462,7 +462,8 @@ def main_generate_ai_video_for_merge(video_generator):
             st.write(tr("Video normalize..."))
             video_service = VideoMergeService(video_scene_video_list)
             print("normalize video")
-            video_scene_video_list = video_service.normalize_video()
+            # video_scene_video_list = video_service.normalize_video()
+            video_scene_video_list = video_service.video_list
             st.write(tr("Generate Video subtitles..."))
             merge_generate_subtitle(video_scene_video_list, video_scene_text_list)
             st.write(tr("Generate Video..."))

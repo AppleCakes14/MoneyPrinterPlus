@@ -15,10 +15,6 @@ import streamlit as st
 from services.captioning import helper
 from tools.utils import get_session_option, must_have_value
 
-key = my_config['audio']['Azure']['speech_key']
-region = my_config['audio']['Azure']['service_region']
-endpoint_id = my_config['audio']['Azure']['endpoint_id']
-
 # must_have_value(key, "请设置Azure speech_key")
 # must_have_value(region, "请设置Azure service_region")
 
@@ -79,6 +75,10 @@ def get_profanity_option() -> speechsdk.ProfanityOption:
 
 
 def user_config_from_args() -> helper.Read_Only_Dict:
+    key = my_config['audio']['Azure']['speech_key']
+    region = my_config['audio']['Azure']['service_region']
+    endpoint_id = my_config['audio']['Azure']['endpoint_id']
+
     if get_session_option("captioning_mode") == "realtime":
         captioning_mode = CaptioningMode.REALTIME
     else:

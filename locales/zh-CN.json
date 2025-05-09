@@ -11,7 +11,7 @@
   "Mix Video": "混剪视频",
 
   "Language": "界面语言",
-  "Resource Provider": "资源库",
+  "Resource Provider": "资源库（图片）",
   "Pexels API Key" : "Pexels API Key",
   "Pixabay API Key" : "Pixabay API Key",
   "Stable Diffusion API User Name": "Stable Diffusion API用户名(没有可不填)",
@@ -86,6 +86,7 @@
   "subtitle color": "字幕颜色",
   "subtitle border color": "字幕边框颜色",
   "subtitle border width": "字幕边框宽度",
+  "Enable punctuation": "是否开启标点符号",
 
   "Video Config": "视频配置",
   "video layout": "视频布局",
@@ -99,6 +100,8 @@
   "video Transition effect duration": "转场效果持续时间(秒)",
   "Enable local video dir": "是否使用本地视频目录(测试)",
   "local video dir": "本地视频目录(测试)",
+  "video min length tips": "'视频片段最小长度(秒)'不能大于'视频片段最大长度(秒)' | 主要用于调整图片时间长度",
+  "video max length tips": "'视频片段最大长度(秒)'不能小于'视频片段最小长度(秒)' | 主要用于调整影片时间长度",
 
   "Generate Video Button": "生成视频",
   "Generate Video in process...": "生成视频中...",

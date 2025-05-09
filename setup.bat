@@ -1,6 +1,14 @@
 chcp 65001
 @echo off
 
+REM Uncomment the following line to enable add relative paths to system PATH
+@REM set "CURRENT_DIR=%cd%"
+
+@REM set "FFMPEG_PATH=%CURRENT_DIR%\ffmpeg-7.1.1-full_build\bin"
+@REM set "PYTHON_PATH=%CURRENT_DIR%\python311"
+
+@REM set "PATH=%FFMPEG_PATH%;%PYTHON_PATH%;%PATH%"'
+
 IF NOT EXIST venv (
     echo Creating venv...
     python.exe -m venv venv

@@ -149,15 +149,18 @@ def refresh_emotion_list():
         st.session_state["disabled"] = False
 
 #====================================================================================
-if 'audio_emotion' not in st.session_state:
-    print('audio_emotion is None')
-    st.session_state['audio_emotion'] = []
-
 if 'available_emotions' not in st.session_state:
     st.session_state['available_emotions'] = ["default"]
 
+if 'audio_emotion' not in st.session_state:
+    print('audio_emotion is None')
+    st.session_state['audio_emotion'] = st.session_state['available_emotions'][0]
+
 if "disabled" not in st.session_state:
     st.session_state["disabled"] = False
+
+selected_emotion = st.session_state.get('audio_emotion')
+available_emotions = st.session_state['available_emotions']
 print("language_code : ", st.session_state.ui_language_code)
 common_ui()
 
@@ -217,11 +220,11 @@ with captioning_container:
         with llm_columns[3]:
             st.selectbox(label=tr("Audio emotion"), 
                          options=st.session_state['available_emotions'],
-                         index=st.session_state['available_emotions'].index(st.session_state.get('audio_emotion', st.session_state['available_emotions'][0])) if st.session_state.get('audio_emotion') in st.session_state['available_emotions'] else 0,
+                         index=available_emotions.index(selected_emotion) if selected_emotion in available_emotions else 0,
                          key="audio_emotion",
                          disabled=st.session_state["disabled"])
-            st.button(label=tr("Refresh"), on_click=refresh_emotion_list)
-            st.caption(tr("Click the refresh button everytime you change the voice"))
+            st.button(label=tr("Refresh"), on_click=refresh_emotion_list, type="primary", use_container_width=True)
+            
 
         llm_columns = st.columns(4)
         with llm_columns[0]:
@@ -229,7 +232,10 @@ with captioning_container:
         if "test_audio_file" in st.session_state and os.path.exists(st.session_state["test_audio_file"]):
             with llm_columns[1]:
                 st.audio(st.session_state["test_audio_file"], format="audio/wav")
+            with llm_columns[2]:
                 st.caption(tr("You can replay the audio by clicking the play button"))
+        with llm_columns[3]:
+            st.caption(tr("Click the refresh button everytime you change the voice"))
 
     if st.session_state.get("audio_type") == "local":
         selected_local_audio_tts_provider = my_config['audio'].get('local_tts', {}).get('provider', '')
@@ -415,10 +421,10 @@ with video_container:
     llm_columns = st.columns(2)
     with llm_columns[0]:
         st.slider(label=tr("video segment min length"), min_value=5, value=5, max_value=10, step=1,
-                  key="video_segment_min_length")
+                  key="video_segment_min_length", help=tr("video min length tips"))
     with llm_columns[1]:
         st.slider(label=tr("video segment max length"), min_value=5, value=10, max_value=30, step=1,
-                  key="video_segment_max_length")
+                  key="video_segment_max_length", help=tr("video max length tips"))
     llm_columns = st.columns(4)
     with llm_columns[0]:
         # st.checkbox(label=tr("Enable video Transition effect"), key="enable_video_transition_effect", value=True)
@@ -473,15 +479,15 @@ with subtitle_container:
         st.selectbox(label=tr("subtitle position"), key="subtitle_position", index=7,
                      options=subtitle_position_options, format_func=lambda x: subtitle_position_options[x])
     with llm_columns[1]:
-        st.color_picker(label=tr("subtitle color"), key="subtitle_color", value="#FFFFFF")
+        nest_columns = st.columns(2)
+        with nest_columns[0]:
+            st.color_picker(label=tr("subtitle color"), key="subtitle_color", value="#FFFFFF")
+        with nest_columns[1]:
+            st.color_picker(label=tr("subtitle border color"), key="subtitle_border_color", value="#000000")
     with llm_columns[2]:
-        st.color_picker(label=tr("subtitle border color"), key="subtitle_border_color", value="#000000")
-    with llm_columns[3]:
         st.slider(label=tr("subtitle border width"), min_value=0.0, value=0.0, max_value=4.0, step=0.1,
                   key="subtitle_border_width", format="%.1f")
-
-    llm_columns = st.columns(4)
-    with llm_columns[0]:
+    with llm_columns[3]:
         # st.checkbox(label=tr("Enable punctuation"), key="enable_punctuation", value=False)
         st.toggle(label=tr("Enable punctuation"), key="enable_punctuation", value=False)
     # with llm_columns[1]:
