@@ -598,7 +598,7 @@ class VideoService:
                             '-an',  # 去除音频
                             '-vf',
                             f"setpts={stretch_factor}*PTS,split[original][blur];[blur]scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=increase,crop={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
-                            f"[original]scale=-1:{self.target_height}:force_original_aspect_ratio=1[scaled];"
+                            f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
                             f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
                             f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
                             f"[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
@@ -613,7 +613,7 @@ class VideoService:
                             '-an',  # 去除音频
                             '-vf',
                             f"setpts={stretch_factor}*PTS,split[original][blur];[blur]scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=increase,crop={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
-                            f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
+                            f"[original]scale=-1:{self.target_height}:force_original_aspect_ratio=1[scaled];"
                             f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
                             f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
                             f"[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
@@ -675,7 +675,7 @@ class VideoService:
                             '-an',  # 去除音频
                             '-vf',
                             f"split[original][blur];[blur]scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=increase,crop={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
-                            f"[original]scale=-1:{self.target_height}:force_original_aspect_ratio=1[scaled];"
+                            f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
                             f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
                             f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
                             f"[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p",
@@ -690,7 +690,7 @@ class VideoService:
                             '-an',  # 去除音频
                             '-vf',
                             f"split[original][blur];[blur]scale={self.target_width}:{self.target_height}:force_original_aspect_ratio=increase,crop={self.target_width}:{self.target_height},boxblur=20:5[blurred];"
-                            f"[original]scale={self.target_width}:-1:force_original_aspect_ratio=1[scaled];"
+                            f"[original]scale=-1:{self.target_height}:force_original_aspect_ratio=1[scaled];"
                             f"[scaled]crop='if(gte(in_w,{self.target_width}),{self.target_width},in_w)':'if(gte(in_h,{self.target_height}),{self.target_height},in_h)':"
                             f"(in_w-{self.target_width})/2:(in_h-{self.target_height})/2[cropped];"
                             f"[blurred][cropped]overlay=(W-w)/2:(H-h)/2,format=yuv420p",

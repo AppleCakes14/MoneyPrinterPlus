@@ -241,6 +241,7 @@ def get_all_videos_from_dir(video_dir):
                     output_name
                 ]
             else:
+                # Protrait video - blurred background
                 ffmpeg_cmd = [
                     'ffmpeg',
                     '-i', media_file,  # 输入文件
