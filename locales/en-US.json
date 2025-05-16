@@ -92,6 +92,9 @@
     "video Transition effect duration": "Transition Effect Duration (seconds)",
     "Enable local video dir": "Use Local Video Directory (testing)",
     "local video dir": "Local Video Directory (testing)",
+    "video min length tips": "'Video segment minimum length (seconds)' cannot be greater than 'video segment maximum length (seconds)' | Mainly used to adjust the picture duration",
+    "video max length tips": "'Video segment maximum length (seconds)' cannot be less than 'video segment minimum length (seconds)' | Mainly used to adjust the video duration",
+
     "Generate Video Button": "Generate Video",
     "Generate Video in process...": "Generating Video...",
     "Generate Video Dubbing...": "Generating Video Voiceover...",
